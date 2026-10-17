@@ -12,6 +12,8 @@ export async function youtubeSearch(term, limit = 24) {
     part: 'snippet',
     type: 'video',
     videoCategoryId: '10',
+    // Only videos whose owner allows embedding; the rest fail in the player with error 150.
+    videoEmbeddable: 'true',
     maxResults: String(Math.min(limit, 50)),
     q: term
   });
@@ -33,18 +35,22 @@ export async function youtubeSearch(term, limit = 24) {
     });
   if (items.length) {
     const det = await getJson(
-      API.youtube + '/videos?' + new URLSearchParams({ part: 'contentDetails', id: items.map((i) => i.id).join(',') })
+      API.youtube + '/videos?' + new URLSearchParams({ part: 'contentDetails,status', id: items.map((i) => i.id).join(',') })
     );
     const dur = {};
+    const blocked = new Set();
     ((det && det.items) || []).forEach((d) => {
       dur[d.id] = isoSeconds(d.contentDetails && d.contentDetails.duration);
+      if (d.status && d.status.embeddable === false) blocked.add(d.id);
     });
     items.forEach((i) => {
       i.duration = dur[i.id] || 0;
+      i.blocked = blocked.has(i.id);
     });
   }
-  // Drop Shorts; keep relevance order, with edits/reactions after the originals.
-  const real = items.filter((i) => !(i.duration > 0 && i.duration < 60));
+  // Drop Shorts and anything the owner blocked from embedding; keep relevance order,
+  // with edits/reactions after the originals.
+  const real = items.filter((i) => !i.blocked && !(i.duration > 0 && i.duration < 60));
   const derivative = (i) => DERIVATIVE_TITLES.some((w) => i.title.toLowerCase().includes(w));
   return [...real.filter((i) => !derivative(i)), ...real.filter(derivative)];
 }

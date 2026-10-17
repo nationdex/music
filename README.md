@@ -55,6 +55,11 @@ tests/smoke.sh        route, header and proxy checks against a running instance
 THIRD_PARTY.md        licenses of vendored code
 ```
 
+## 📱 Mobile app
+
+`mobile/` is a Flutter port for Android and iOS, with Liquid Glass on iOS 26. See
+[mobile/README.md](mobile/README.md).
+
 ## 📲 Install as an app
 
 Adi Music is a PWA: a web app manifest, a service worker, and install prompts.

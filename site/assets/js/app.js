@@ -951,10 +951,18 @@ function initAlpineApp() {
       if (d) this.duration = d;
       this.syncLyricHighlight();
     },
+    // 101 and 150 both mean the uploader blocked embedding. Nothing can play it in the
+    // iframe, so move on to the next track instead of stopping the queue.
     onYTError(code) {
+      const blockedByOwner = code === 101 || code === 150 || code === '101' || code === '150';
       this.ytMode = false;
       this.isPlaying = false;
-      this.snackbar('This video cannot be played here (YouTube error ' + code + ')');
+      if (blockedByOwner && this.queue.length > 1 && this.repeat !== 'one') {
+        this.snackbar('Skipped: the uploader does not allow this video to play outside YouTube.');
+        this.nextTrack();
+        return;
+      }
+      this.snackbar(blockedByOwner ? 'The uploader does not allow this video to play outside YouTube.' : 'This video cannot be played here (YouTube error ' + code + ')');
     },
 
     // ---- install (PWA)
