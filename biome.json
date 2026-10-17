@@ -5,6 +5,7 @@
       "site/assets/js/**",
       "site/assets/app.css",
       "site/assets/uno.config.js",
+      "site/sw.js",
       "site/manifest.webmanifest",
       ".claude/settings.json",
       "biome.json"

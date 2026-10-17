@@ -13,6 +13,8 @@ Material 3.
 - 🎚️ **10-band equalizer.** Includes presets. Works with local files.
 - ▶️ **Full-length tracks.** Search YouTube in Discovery. When YouTube has no match,
   iTunes 30-second previews are the fallback.
+- 📲 **Installable.** Runs as an app on Android, iOS, Windows, macOS and Linux. Works
+  offline, with media keys and lock-screen controls. See [Install as an app](#-install-as-an-app).
 - 🎨 **Themes.** Light, dark, or automatic. Choose an accent color, or let the cover art
   set the palette.
 
@@ -42,14 +44,52 @@ site/                 everything nginx serves
   assets/
     app.css           Material 3 tokens and component CSS
     uno.config.js     UnoCSS config: colors, type scale, breakpoints
+  sw.js               service worker (offline shell)
+  manifest.webmanifest  PWA manifest: icons, shortcuts, file handlers, screenshots
     js/               ES modules: app.js (Alpine component), tags, db, lyrics,
-                      sources, palette, router, config, util, theme
+                      sources, palette, router, config, util, theme, pwa
     vendor/           pinned Alpine, plugins and UnoCSS, checked in
   fonts/ images/      M PLUS Rounded 1c subsets, icons, logo, screenshots
 deploy/               nginx config, systemd unit, env file, install and prepare scripts
 tests/smoke.sh        route, header and proxy checks against a running instance
 THIRD_PARTY.md        licenses of vendored code
 ```
+
+## 📲 Install as an app
+
+Adi Music is a PWA: a web app manifest, a service worker, and install prompts.
+
+| Platform | Browser | How |
+| --- | --- | --- |
+| 🤖 Android | Chrome, Edge, Samsung Internet | Install prompt, or menu, Install app. Settings has an Install button |
+| 🤖 Android | Firefox | Menu, Install |
+| 🍏 iOS, iPadOS | Safari | Share, Add to Home Screen. iOS has no install prompt API |
+| 🪟 Windows | Chrome, Edge | Install icon in the address bar, or Settings, Install |
+| 🍎 macOS | Chrome, Edge | Same as Windows |
+| 🍎 macOS | Safari 17+ | File, Add to Dock |
+| 🐧 Linux | Chrome, Edge, other Chromium browsers | Same as Windows |
+| 🦊 Desktop | Firefox | Cannot install web apps |
+
+**HTTPS is required.** Browsers register service workers and offer install only on
+`https://` or `localhost`. Over plain HTTP on a LAN address the site works but is not
+installable. Put Caddy, or nginx with certificates, in front (see Run).
+
+What the app provides:
+
+- 📴 **Offline.** `site/sw.js` precaches the shell. Your library lives in IndexedDB, so
+  local tracks play with no network. Lyrics, Discovery and YouTube need a connection.
+- 🔄 **Updates.** Code files load network-first and refresh the cache. When you add or
+  remove a file in `SHELL`, bump `CACHE` in `sw.js`.
+- 🎛️ **Media controls.** Media Session gives play, pause, previous, next, seek and track
+  info to the lock screen, notification shade, media keys and OS overlays.
+- 📂 **Open with.** The installed desktop app (Chromium) appears in "Open with" for audio
+  files and plays the file you open.
+- 🧭 **Shortcuts.** Long-press or right-click the app icon for Tracks, Albums, Playlists
+  and Discovery.
+- 🎭 **Icons.** Standard and maskable PNGs, an iOS touch icon, and a favicon.
+
+Not included: iOS splash images (iOS shows a plain screen while launching) and Web Share
+Target (the nginx proxies are GET-only).
 
 ## 🎨 Styling
 
@@ -123,7 +163,7 @@ Only these exact endpoints are proxied. Anything else under `/up/` returns 404.
 ## 🧪 Tests
 
 ```bash
-sh tests/smoke.sh http://127.0.0.1:3030   # 75 checks: routes, SSI, headers, key leakage, proxy allow-list, module syntax
+sh tests/smoke.sh http://127.0.0.1:3030   # routes, SSI, headers, key leakage, proxy allow-list, module syntax, PWA assets
 ```
 
 ## 📜 Notes

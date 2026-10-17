@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, EQ_PRESETS } from './config.js';
 import { idbAll, idbClear, idbDelete, idbGet, idbPut } from './db.js';
 import { parseLRC, parseTTML, resolveLyrics } from './lyrics.js';
 import { DEFAULT_SEED_HUE, DEFAULT_TOKENS, hexToHsl, rotateHex } from './palette.js';
+import { pwa } from './pwa.js';
 import { resolveRoute } from './router.js';
 import { YTBridge, cleanYouTubeMeta, itunesSearch, youtubeSearch } from './sources.js';
 import { compressArtwork, probeDuration, readTags } from './tags.js';
@@ -162,6 +163,8 @@ function initAlpineApp() {
 
       this.initEqualizerAudioGraph();
       this.setupMediaSession();
+      this.setupInstall();
+      this.setupFileLaunch();
       await this.loadLibrary();
 
       const start = resolveRoute(location.pathname) || resolveRoute('/library/tracks');
@@ -863,6 +866,7 @@ function initAlpineApp() {
       else if (this.audioEl) this.audioEl.currentTime = t;
       this.currentTime = t;
       this.syncLyricHighlight();
+      this.updatePositionState();
     },
 
     setVolume(e) {
@@ -953,6 +957,35 @@ function initAlpineApp() {
       this.snackbar('This video cannot be played here (YouTube error ' + code + ')');
     },
 
+    // ---- install (PWA)
+    installable: false,
+    installed: false,
+    installHint: '',
+    setupInstall() {
+      const sync = () => {
+        this.installable = pwa.canPrompt;
+        this.installed = pwa.standalone;
+        this.installHint = pwa.hint;
+      };
+      sync();
+      pwa.onChange(sync);
+    },
+    async installApp() {
+      if ((await pwa.install()) === 'accepted') this.snackbar('Adi Music installed');
+    },
+    // Installed desktop app: "Open with" on audio files hands them to launchQueue.
+    setupFileLaunch() {
+      if (!('launchQueue' in window)) return;
+      window.launchQueue.setConsumer(async (params) => {
+        if (!params.files || !params.files.length) return;
+        const files = await Promise.all(params.files.map((h) => h.getFile()));
+        await this.importFiles(files);
+        const keys = new Set(files.map((f) => f.name + ':' + f.size + ':' + f.lastModified));
+        const first = this.tracks.find((t) => keys.has(t.fileKey));
+        if (first) this.playFromList([first], 0);
+      });
+    },
+
     // ---- Media Session
     setupMediaSession() {
       if (!('mediaSession' in navigator)) return;
@@ -961,6 +994,26 @@ function initAlpineApp() {
       ms.setActionHandler('pause', () => this.togglePlay());
       ms.setActionHandler('previoustrack', () => this.prevTrack());
       ms.setActionHandler('nexttrack', () => this.nextTrack());
+      ms.setActionHandler('stop', () => this.isPlaying && this.togglePlay());
+      ms.setActionHandler('seekbackward', (d) => this.seekTo(Math.max(0, this.currentTime - (d.seekOffset || 10))));
+      ms.setActionHandler('seekforward', (d) => this.seekTo(Math.min(this.duration || 0, this.currentTime + (d.seekOffset || 10))));
+      try {
+        ms.setActionHandler('seekto', (d) => this.seekTo(d.seekTime));
+      } catch {}
+      this.$watch('isPlaying', (playing) => {
+        ms.playbackState = playing ? 'playing' : 'paused';
+        this.updatePositionState();
+      });
+    },
+    updatePositionState() {
+      if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState || !(this.duration > 0)) return;
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: this.duration,
+          playbackRate: this.audioEl && !this.ytMode ? this.audioEl.playbackRate || 1 : 1,
+          position: Math.min(this.currentTime || 0, this.duration)
+        });
+      } catch {}
     },
     updateMediaSession() {
       if (!('mediaSession' in navigator) || !this.currentTrack) return;

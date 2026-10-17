@@ -111,6 +111,20 @@
       </div>
     </section>
 
+    <!-- Install -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Install</div>
+      <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
+        <div class="min-w-0">
+          <div>Adi Music as an app</div>
+          <div class="text-body-sm text-onSurfaceVariant" x-show="installed">Installed. You are running the app.</div>
+          <div class="text-body-sm text-onSurfaceVariant" x-show="!installed &amp;&amp; installable">Runs in its own window, works offline, and opens audio files.</div>
+          <div class="text-body-sm text-onSurfaceVariant" x-show="!installed &amp;&amp; !installable" x-text="installHint"></div>
+        </div>
+        <button type="button" class="m3-button-base tonal-button h-10 shrink-0 px-5 text-base" x-show="!installed &amp;&amp; installable" @click="installApp()"><span class="button-content">Install</span></button>
+      </div>
+    </section>
+
     <!-- Backup -->
     <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
       <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Export &amp; Import</div>

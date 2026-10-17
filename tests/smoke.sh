@@ -71,6 +71,28 @@ if grep -rnE '\b[a-z-]+-\(--[A-Za-z-]+\)' "$SITE"/*.html "$SITE"/components "$SI
   bad "Tailwind paren shorthand x-(--var) found in site/: use x-[var(--var)]"
 else ok; fi
 
+# PWA: worker, manifest, icons, and every file the worker precaches
+SITE="$(dirname "$0")/../site"
+hdr="$(curl -sI -m 20 "$BASE/sw.js")"
+echo "$hdr" | grep -qi '^content-type: .*javascript' && ok || bad "sw.js is not served as JavaScript"
+echo "$hdr" | grep -qi '^cache-control: no-cache' && ok || bad "sw.js must send Cache-Control: no-cache (restart nginx after config changes)"
+curl -sI -m 20 "$BASE/manifest.webmanifest" | grep -qi '^content-type: application/manifest+json' && ok || bad "manifest content type"
+for p in / /library/tracks; do
+  html="$(curl -s -m 20 "$BASE$p")"
+  printf '%s' "$html" | grep -q 'rel="manifest"' && ok || bad "$p: manifest link missing"
+  printf '%s' "$html" | grep -q 'rel="apple-touch-icon"' && ok || bad "$p: apple-touch-icon missing"
+  printf '%s' "$html" | grep -q 'apple-mobile-web-app-capable' && ok || bad "$p: iOS standalone meta missing"
+done
+if command -v jq >/dev/null 2>&1; then
+  jq -e '.id and .name and .start_url and .scope and .display and (.icons | map(.purpose) | index("maskable"))' "$SITE/manifest.webmanifest" >/dev/null && ok || bad "manifest lacks id/name/start_url/scope/display or a maskable icon"
+  for u in $(jq -r '[.icons[].src, .screenshots[].src, .shortcuts[].url, .file_handlers[].action] | .[]' "$SITE/manifest.webmanifest"); do
+    want 200 "manifest asset $u" "$BASE$u"
+  done
+fi
+for u in $(sed -n "/^const SHELL = \[/,/^\];/p" "$SITE/sw.js" | grep -o "'/[^']*'" | tr -d "'"); do
+  want 200 "precache $u" "$BASE$u"
+done
+
 # the client modules parse
 if command -v node >/dev/null 2>&1; then
   for f in "$SITE"/assets/js/*.js; do
