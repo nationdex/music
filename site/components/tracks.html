@@ -1,0 +1,69 @@
+<div class="flex grow flex-col px-4" x-data x-init="searchFilter = ''">
+  <!-- Search / sort bar -->
+  <div class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex min-h-14 w-full max-w-150 items-center gap-1 rounded-2xl border border-primary/10 bg-surfaceContainerHighest px-2.5 text-onSurface">
+    <input type="search" x-model="searchFilter" placeholder="Search tracks" aria-label="Search tracks" autocomplete="off"
+           class="h-11 min-w-0 grow bg-transparent px-2 text-body-md text-onSurface placeholder:text-onSurface/60 focus:outline-none" />
+    <div class="h-6 w-px shrink-0 bg-outlineVariant"></div>
+    <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Open sort menu" @click="openSortMenu($event)">
+      <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-sort"></use></svg></div>
+    </button>
+    <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="sortAsc ? 'Sort descending' : 'Sort ascending'" @click="sortAsc = !sortAsc">
+      <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6 transition-transform" :class="sortAsc ? '' : 'rotate-180'" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-sortAscending"></use></svg></div>
+    </button>
+    <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="More options" @click="openLibraryMenu($event)" style="margin-left:0.25rem">
+      <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-moreVertical"></use></svg></div>
+    </button>
+  </div>
+
+  <!-- Empty library -->
+  <div x-show="tracks.length === 0" class="flex grow flex-col items-center justify-center gap-1 text-center">
+    <h2 class="text-title-lg text-onPrimaryContainer">Your library is empty</h2>
+    <p class="text-body-md text-onSurfaceVariant">Start by adding some music</p>
+    <label class="m3-button-base filled-button mt-3 h-10 cursor-pointer px-6 text-base">
+      <span class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-plus"></use></svg><span>Import tracks</span></span>
+      <input type="file" multiple accept="audio/*" class="sr-only" @change="importFiles($event.target.files); $event.target.value = ''" />
+    </label>
+  </div>
+
+  <!-- No search results -->
+  <div x-show="tracks.length > 0 && filteredTracks.length === 0" class="flex grow flex-col items-center justify-center gap-1 text-center">
+    <h2 class="text-title-lg text-onPrimaryContainer">No tracks found</h2>
+    <p class="text-body-md text-onSurfaceVariant">Try a different search</p>
+  </div>
+
+  <!-- Track list -->
+  <div class="flex w-full grow flex-col" x-show="filteredTracks.length > 0">
+    <template x-for="(track, i) in filteredTracks" :key="track.id">
+      <div class="track-item-container interactable group h-18 shrink-0 rounded-lg text-left text-onSurfaceVariant"
+           role="button" tabindex="0" @click="playFromList(filteredTracks, i)" @keydown.enter="playFromList(filteredTracks, i)"
+           @contextmenu.prevent="openTrackMenu($event, track)">
+        <div class="grid size-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 pr-2 pl-4 md:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_auto]">
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="relative size-10 shrink-0 overflow-hidden rounded bg-secondaryContainer text-onSecondaryContainer">
+              <template x-if="track.artwork"><img :src="track.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+              <template x-if="!track.artwork"><svg class="absolute inset-0 m-auto size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg></template>
+              <div x-show="isCurrent(track)" class="absolute inset-0 flex items-center justify-center bg-scrim/50 text-primary">
+                <svg class="size-5 fill-current" viewBox="0 0 24 24" role="presentation"><use :href="isPlaying ? '#system-icon-volumeHigh' : '#system-icon-play'"></use></svg>
+              </div>
+            </div>
+            <div class="min-w-0">
+              <div class="truncate text-title-sm" :class="isCurrent(track) ? 'text-primary' : 'text-onSurface'" x-text="track.name"></div>
+              <div class="truncate text-body-sm" x-text="track.artist"></div>
+            </div>
+          </div>
+          <div class="truncate text-body-md max-md:hidden" x-text="track.album"></div>
+          <div class="flex items-center justify-end gap-1 md:col-start-3">
+            <svg class="mr-2 size-4 shrink-0 fill-current opacity-70 max-sm:hidden" viewBox="0 0 24 24" role="presentation" x-show="track.stored !== false" title="Saved in your library"><use href="#system-icon-check"></use></svg>
+            <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="isFavorite(track) ? 'Remove from favorites' : 'Add to favorites'" @click.stop="toggleFavorite(track)">
+              <div class="button-content"><svg class="pointer-events-none shrink-0 size-6 fill-current" :class="isFavorite(track) ? 'text-primary' : ''" role="presentation" viewBox="0 0 24 24"><use :href="isFavorite(track) ? '#system-icon-favorite' : '#system-icon-favoriteOutline'"></use></svg></div>
+            </button>
+            <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Track options" @click.stop="openTrackMenu($event, track)">
+              <div class="button-content"><svg class="pointer-events-none shrink-0 size-6 fill-current" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-moreVertical"></use></svg></div>
+            </button>
+            <span class="ml-1 shrink-0 text-right text-body-md tabular-nums" x-text="formatTime(track.duration)"></span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>

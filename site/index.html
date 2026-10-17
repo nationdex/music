@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en" class="dark" un-cloak>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adi Music - A music player built around your library</title>
+    <meta name="description" content="Play your local music in the browser with playlists, equalizer, playback speed, and offline listening. No uploads, no sign-up." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#271816" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Adi Music" />
+    <meta property="og:title" content="Adi Music - A music player built around your library" />
+    <meta property="og:description" content="Play your local music in the browser with playlists, equalizer, playback speed, and offline listening." />
+    <meta property="og:image" content="/images/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/images/logo-64.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/images/icon-192.png" />
+    <link rel="preload" href="/fonts/MPLUSRounded1c-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/assets/vendor/unocss-reset.css" as="style" />
+    <link rel="stylesheet" href="/assets/app.css" />
+    <!-- UnoCSS runtime: generates the utility CSS in the browser (no build step). Order matters: config, preset, core. -->
+    <script src="/assets/uno.config.js"></script>
+    <script src="/assets/vendor/unocss-preset-wind4.js"></script>
+    <script src="/assets/vendor/unocss-runtime-core.js"></script>
+    <noscript><style>[un-cloak] { display: block; }</style></noscript>
+    <script src="/assets/js/theme.js"></script>
+    <script defer src="/assets/vendor/alpine-intersect.min.js"></script>
+    <script defer src="/assets/vendor/alpine.min.js"></script>
+  </head>
+
+  <body x-data="{ eq: [4, 3, 1, -1, -2, 0, 2, 4, 5, 6], speed: 1 }">
+    <!--# include virtual="/partials/icons.html" -->
+
+    <header class="mktg-content-width flex-row justify-start gap-2 py-4">
+      <div class="mr-auto flex items-center gap-2 text-title-sm font-medium text-onSurface xs:text-title-md">
+        <img src="/images/logo-64.png" width="24" height="24" alt="" class="size-6" />
+        Adi Music
+      </div>
+      <a href="https://github.com/adidotzip/music" rel="noopener noreferrer" target="_blank" aria-label="Source code on GitHub" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full">
+        <span class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-github"></use></svg></span>
+      </a>
+      <a href="/library/tracks" class="m3-button-base outlined-button h-10 px-6 text-base max-sm:hidden"><span class="button-content">Open Player</span></a>
+    </header>
+
+    <main class="flex flex-col gap-14 select-text md:gap-32">
+      <!-- Hero -->
+      <section class="mktg-content-width hero @container relative mx-auto grid w-full items-center gap-10 overflow-hidden px-6 pt-16 pb-4 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12 lg:py-24">
+        <div class="relative z-10 text-center lg:text-left">
+          <div class="mb-5 inline-flex items-center gap-2 rounded-full border border-outlineVariant bg-surfaceContainerHigh px-3.5 py-2 text-label-md font-medium text-onSurfaceVariant">
+            <span class="size-2 rounded-full bg-primary"></span> Material Design • Dynamic colors
+          </div>
+          <h1 class="hero-title mb-6 font-bold text-onSurface">Your music, <span class="inline-block text-primary">organized around you.</span></h1>
+          <p class="mx-auto mb-7 max-w-2xl text-title-md leading-relaxed text-onSurfaceVariant sm:text-title-lg lg:mx-0 lg:max-w-xl">Browse artists and albums, follow synced lyrics, shape the sound with an equalizer, and keep your playlists and queue close.</p>
+          <div class="mx-auto grid max-w-120 grid-cols-1 items-center justify-center gap-4 sm:grid-cols-2 lg:mx-0 lg:justify-start">
+            <a href="/library/tracks" class="m3-button-base filled-button h-10 w-full px-6 text-base"><span class="button-content">Open Player</span></a>
+            <a href="#features" class="m3-button-base outlined-button h-10 w-full px-6 text-base"><span class="button-content">Explore features</span></a>
+          </div>
+          <div class="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-body-md text-onSurfaceVariant lg:justify-start">
+            <span>Private by default</span><span aria-hidden="true">•</span><span>Works offline</span><span aria-hidden="true">•</span><span>Open source</span>
+          </div>
+        </div>
+
+        <div class="product-stage relative min-w-0">
+          <div class="product-glow"></div>
+          <div class="product-frame">
+            <img src="/images/player.png" width="1200" height="720" alt="Adi Music showing a library of albums with the player at the bottom of the screen" class="product-image block h-auto w-full" fetchpriority="high" />
+          </div>
+          <div class="product-chip product-chip-top">
+            <div class="text-label-sm text-onSurfaceVariant">Adaptive interface</div>
+            <div class="mt-1 text-title-sm font-semibold text-onSurface">Artwork colors follow the track</div>
+          </div>
+          <div class="product-chip product-chip-bottom">
+            <div class="text-label-sm text-onSurfaceVariant">Listening tools</div>
+            <div class="mt-1 text-title-sm font-semibold text-onSurface">Lyrics · Queue · Equalizer</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section class="mktg-content-width gap-8" x-data="{ shown: false }" x-intersect.once.margin.-10%="shown = true">
+        <div class="reveal text-center" :class="{ 'is-in': shown }">
+          <div class="mb-2 text-label-lg font-medium text-primary">How it works</div>
+          <h2 class="mb-3 text-headline-md font-bold text-onSurface md:text-headline-lg">Private by design, simple to start</h2>
+          <p class="mx-auto max-w-2xl text-body-lg text-onSurfaceVariant">Add your music and Adi Music reads only the files you choose. Nothing is uploaded.</p>
+        </div>
+        <div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
+          <article class="reveal how-it-works-card p-7" :class="{ 'is-in': shown }" style="--d: 60ms">
+            <div class="mb-5 flex size-13 items-center justify-center rounded-2xl bg-secondaryContainer/55 text-secondary"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-folder"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">You choose the files</h3>
+            <p class="text-body-lg leading-relaxed text-onSurfaceVariant">Click Import tracks or drop audio files onto the page. Only what you pick is added to the library.</p>
+          </article>
+          <article class="reveal how-it-works-card p-7" :class="{ 'is-in': shown }" style="--d: 140ms">
+            <div class="mb-5 flex size-13 items-center justify-center rounded-2xl bg-secondaryContainer/55 text-secondary"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-lockCheck"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Your tags become the library</h3>
+            <p class="text-body-lg leading-relaxed text-onSurfaceVariant">Titles, artists, albums and cover art are read from your files and organised into tracks, albums and artists automatically.</p>
+          </article>
+          <article class="reveal how-it-works-card p-7" :class="{ 'is-in': shown }" style="--d: 220ms">
+            <div class="mb-5 flex size-13 items-center justify-center rounded-2xl bg-secondaryContainer/55 text-secondary"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-cached"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Library data stays on this device</h3>
+            <p class="text-body-lg leading-relaxed text-onSurfaceVariant">Tracks, playlists and settings are saved in this browser so the player reopens quickly and keeps working offline.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="mktg-content-width gap-8" x-data="{ shown: false }" x-intersect.once.margin.-10%="shown = true">
+        <div class="reveal text-center" :class="{ 'is-in': shown }">
+          <div class="mb-2 text-label-lg font-medium text-primary">The new Adi Music</div>
+          <h2 class="mb-3 text-headline-md font-bold text-onSurface md:text-headline-lg">A music player that feels like one system</h2>
+          <p class="mx-auto max-w-2xl text-body-lg text-onSurfaceVariant">Material surfaces, expressive artwork, and the controls you actually use while listening.</p>
+        </div>
+        <div class="grid max-w-6xl grid-cols-1 gap-5 md:grid-cols-2">
+          <article class="feature-card reveal p-7" :class="{ 'is-in': shown }" style="--d: 40ms">
+            <div class="feature-card-icon mb-6"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-album"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Artists and albums, one library</h3>
+            <p class="max-w-xl text-body-lg leading-relaxed text-onSurfaceVariant">Move between tracks, albums, and artist pages without losing the music you are playing.</p>
+            <div class="feature-line" aria-hidden="true"></div>
+          </article>
+          <article class="feature-card feature-secondary reveal p-7" :class="{ 'is-in': shown }" style="--d: 110ms">
+            <div class="feature-card-icon mb-6"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Lyrics that stay with the player</h3>
+            <p class="max-w-xl text-body-lg leading-relaxed text-onSurfaceVariant">Follow synced lyrics while the artwork and player controls remain right where you need them.</p>
+            <div class="feature-line" aria-hidden="true"></div>
+          </article>
+          <article class="feature-card feature-tertiary reveal p-7" :class="{ 'is-in': shown }" style="--d: 180ms">
+            <div class="feature-card-icon mb-6"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-palette"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">A UI that follows the music</h3>
+            <p class="max-w-xl text-body-lg leading-relaxed text-onSurfaceVariant">Album artwork can drive the Material color palette, so the interface changes with what you play.</p>
+            <div class="feature-line" aria-hidden="true"></div>
+          </article>
+          <article class="feature-card reveal p-7" :class="{ 'is-in': shown }" style="--d: 250ms">
+            <div class="feature-card-icon mb-6"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-playlistMusic"></use></svg></div>
+            <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Playlists, queue, and history</h3>
+            <p class="max-w-xl text-body-lg leading-relaxed text-onSurfaceVariant">Build playlists, mark favorites, shuffle or repeat, and decide what comes next.</p>
+            <div class="feature-line" aria-hidden="true"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Sound controls: live components, not screenshots -->
+      <section class="mktg-content-width gap-8" x-data="{ shown: false }" x-intersect.once.margin.-10%="shown = true">
+        <div class="reveal text-center" :class="{ 'is-in': shown }">
+          <div class="mb-2 text-label-lg font-medium text-primary">Sound controls</div>
+          <h2 class="mb-3 text-headline-md font-bold text-onSurface md:text-headline-lg">Adjust the sound, set your pace</h2>
+          <p class="mx-auto max-w-2xl text-body-lg text-onSurfaceVariant">Try the controls below. They are the same ones inside the player.</p>
+        </div>
+        <div class="grid w-full max-w-6xl grid-cols-1 gap-5 lg:grid-cols-[1.35fr_1fr]">
+          <article class="feature-card reveal overflow-hidden" :class="{ 'is-in': shown }" style="--d: 60ms">
+            <div class="p-7 pb-2">
+              <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Built-in equalizer</h3>
+              <p class="max-w-xl text-body-lg leading-relaxed text-onSurfaceVariant">Tune it for your headphones or speakers. Start with a preset, then fine-tune each band until the sound is right.</p>
+            </div>
+            <div class="equalizer-shot-wrap relative flex items-end justify-center px-4 pb-6">
+              <div class="relative grid w-full max-w-xl gap-1" style="grid-template-columns: repeat(10, minmax(0, 1fr))">
+                <template x-for="(gain, i) in eq" :key="i">
+                  <div class="m3-slider vertical" :style="{ '--f': (gain + 12) / 24 }">
+                    <input type="range" min="-12" max="12" step="1" :value="gain" @input="eq[i] = Number($event.target.value)" :aria-label="'Band ' + (i + 1) + ' gain'" />
+                    <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </article>
+          <article class="feature-card feature-secondary reveal justify-between p-7" :class="{ 'is-in': shown }" style="--d: 140ms">
+            <div>
+              <div class="feature-card-icon mb-6"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-flash"></use></svg></div>
+              <h3 class="mb-2 text-title-lg font-semibold text-onSurface">Listen at any speed</h3>
+              <p class="text-body-lg leading-relaxed text-onSurfaceVariant">Slow down for closer listening or move through albums and long mixes at your own pace.</p>
+            </div>
+            <div class="mt-8 flex items-center gap-3 rounded-2xl bg-surfaceContainerHigh px-4 py-2">
+              <span class="w-12 text-label-lg tabular-nums" x-text="speed.toFixed(2).replace(/0$/, '') + 'x'"></span>
+              <div class="m3-slider" :style="{ '--f': (speed - 0.5) / 1.5 }">
+                <input type="range" min="0.5" max="2" step="0.05" :value="speed" @input="speed = Number($event.target.value)" aria-label="Playback speed" />
+                <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Getting started -->
+      <section class="mktg-content-width gap-8" x-data="{ shown: false }" x-intersect.once.margin.-10%="shown = true">
+        <div class="reveal text-center" :class="{ 'is-in': shown }">
+          <div class="mb-2 text-label-lg font-medium text-primary">Getting started</div>
+          <h2 class="mb-3 text-headline-md font-bold text-onSurface md:text-headline-lg">Start listening in three steps</h2>
+        </div>
+        <ol class="grid w-full max-w-6xl grid-cols-1 gap-5 md:grid-cols-3">
+          <li class="reveal how-it-works-card flex gap-4 p-7" :class="{ 'is-in': shown }" style="--d: 40ms">
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primaryContainer text-title-md font-bold text-onPrimaryContainer">1</span>
+            <div><h3 class="mb-1 text-title-md font-semibold text-onSurface">Import your music</h3><p class="text-body-md leading-relaxed text-onSurfaceVariant">Open the player, then choose Import tracks or drop audio files on the page.</p></div>
+          </li>
+          <li class="reveal how-it-works-card flex gap-4 p-7" :class="{ 'is-in': shown }" style="--d: 120ms">
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primaryContainer text-title-md font-bold text-onPrimaryContainer">2</span>
+            <div><h3 class="mb-1 text-title-md font-semibold text-onSurface">Browse your library</h3><p class="text-body-md leading-relaxed text-onSurfaceVariant">Tracks, albums, and artists are organized automatically from your file tags.</p></div>
+          </li>
+          <li class="reveal how-it-works-card flex gap-4 p-7" :class="{ 'is-in': shown }" style="--d: 200ms">
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primaryContainer text-title-md font-bold text-onPrimaryContainer">3</span>
+            <div><h3 class="mb-1 text-title-md font-semibold text-onSurface">Set up what plays next</h3><p class="text-body-md leading-relaxed text-onSurfaceVariant">Build a playlist, queue a few tracks, mark favorites, and press play.</p></div>
+          </li>
+        </ol>
+        <p class="max-w-2xl text-center text-body-md text-onSurfaceVariant">Works in modern browsers on desktop, Android and iOS. Your files and playlists stay on your device.</p>
+      </section>
+    </main>
+
+    <footer class="mt-14 w-full border-t border-outlineVariant bg-shadow/7 md:mt-32">
+      <div class="mktg-content-width items-center justify-between gap-4 py-8 sm:flex-row">
+        <div class="flex items-center gap-2 text-label-lg font-medium text-onSurfaceVariant">
+          <img src="/images/logo-64.png" width="24" height="24" alt="" class="size-5 opacity-60" /> Adi Music
+        </div>
+        <div class="flex items-center gap-6 text-body-md">
+          <a href="https://github.com/adidotzip/music" rel="noopener noreferrer" target="_blank" class="flex items-center gap-1.5 text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">
+            <svg class="size-4 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-github"></use></svg> Source code
+          </a>
+          <a href="https://github.com/adidotzip/music#privacy" rel="noopener noreferrer" target="_blank" class="text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">Privacy</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

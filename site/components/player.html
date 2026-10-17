@@ -1,0 +1,163 @@
+<div class="relative isolate flex min-h-dvh grow flex-col bg-secondaryContainer text-onSecondaryContainer" x-data="{ tab: 'queue' }" x-init="$nextTick(() => { if (lyricsStatus === 'idle' && currentTrack) fetchLyrics() })">
+  <!-- Blurred artwork wash -->
+  <div class="pointer-events-none absolute inset-0 -z-1 overflow-hidden" aria-hidden="true">
+    <template x-if="currentTrack && currentTrack.artwork">
+      <img :src="currentTrack.artwork" alt="" class="size-full scale-125 object-cover opacity-30 blur-3xl" />
+    </template>
+  </div>
+
+  <div class="flex h-full grow flex-col lg:flex-row">
+    <!-- Left: now playing -->
+    <div class="flex w-full shrink-0 flex-col overflow-y-auto bg-secondaryContainerVariant lg:fixed lg:top-0 lg:max-h-dvh lg:min-h-full lg:w-107.5">
+      <div class="player-content flex w-full grow flex-col items-center px-4 pt-2 pb-4 lg:min-h-dvh">
+        <div class="flex h-14 w-full shrink-0 items-center justify-between gap-2">
+          <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Back" @click="goBack()">
+            <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-backArrow"></use></svg></div>
+          </button>
+          <h1 class="text-title-lg">Player</h1>
+          <div class="size-11 shrink-0"></div>
+        </div>
+
+        <div class="relative flex w-full shrink-0 items-center justify-center py-4">
+          <div class="relative aspect-square shrink-0 overflow-hidden rounded-3xl bg-secondaryContainer text-onSecondaryContainer" style="width: clamp(9rem, 28dvh, 17rem)">
+            <template x-if="currentTrack && currentTrack.artwork"><img :src="currentTrack.artwork" alt="" class="size-full object-cover" /></template>
+            <template x-if="!currentTrack || !currentTrack.artwork"><svg class="absolute inset-0 m-auto size-16 fill-current opacity-40" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg></template>
+          </div>
+        </div>
+
+        <div class="mt-2 flex w-full flex-col gap-2">
+          <div class="min-h-10 px-1" x-show="currentTrack">
+            <div class="truncate text-title-md" x-text="currentTrack && currentTrack.name"></div>
+            <div class="truncate text-body-md text-onSecondaryContainer/80" x-text="currentTrack && currentTrack.artist"></div>
+          </div>
+
+          <div class="w-full rounded-2xl bg-surfaceContainerHighest px-4 py-2 text-onSurface">
+            <div class="timeline-container grid w-full items-center gap-2.5 text-nowrap tabular-nums" style="grid-template-columns: auto minmax(0, 1fr) auto">
+              <div class="text-body-sm" x-text="formatTime(currentTime)">00:00</div>
+              <div class="m3-slider" :class="{ 'is-disabled': !currentTrack }" :style="{ '--f': timelineFrac }">
+                <input type="range" min="0" :max="duration || 1" step="0.1" :value="currentTime" @input="seek($event)" :disabled="!currentTrack" aria-label="Seek" />
+                <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+              </div>
+              <div class="text-right text-body-sm" x-text="formatTime(duration)">00:00</div>
+            </div>
+          </div>
+
+          <div class="flex w-full flex-col gap-2 rounded-2xl bg-secondaryContainer px-4 py-3">
+            <div class="flex items-center justify-between gap-2 py-2">
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-pressed="shuffle" aria-label="Toggle shuffle" @click="toggleShuffle()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" :class="shuffle ? 'text-primary' : ''" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-shuffle"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Play previous track" @click="prevTrack()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-fastRewind"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base filled-button flex size-14 shrink-0 items-center justify-center" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="togglePlay()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-7" role="presentation" viewBox="0 0 24 24"><use :href="isPlaying ? '#system-icon-pause' : '#system-icon-play'"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Play next track" @click="nextTrack()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-fastForward"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-pressed="repeat !== 'off'" aria-label="Cycle repeat mode" @click="cycleRepeat()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" :class="repeat !== 'off' ? 'text-primary' : ''" role="presentation" viewBox="0 0 24 24"><use :href="repeat === 'one' ? '#system-icon-repeatOnce' : '#system-icon-repeat'"></use></svg></div>
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Toggle mute" @click="toggleMute()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="muted || volume === 0 ? '#system-icon-volumeOff' : '#system-icon-volumeLow'"></use></svg></div>
+              </button>
+              <div class="m3-slider" :style="{ '--f': muted ? 0 : volume }">
+                <input type="range" min="0" max="1" step="0.01" :value="muted ? 0 : volume" @input="setVolume($event)" aria-label="Volume" />
+                <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+              </div>
+              <svg class="size-6 shrink-0 fill-current" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-volumeHigh"></use></svg>
+            </div>
+          </div>
+
+          <div class="flex w-full items-center justify-end rounded-2xl bg-secondaryContainer px-4 py-2">
+            <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Open equalizer" @click="openDialog('equalizer')">
+              <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-equalizer"></use></svg></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: queue / history / lyrics -->
+    <div class="flex w-full grow flex-col lg:pl-107.5">
+      <div class="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-center border-b border-outlineVariant/40 bg-secondaryContainer/95 px-4 backdrop-blur-sm">
+        <div role="tablist" class="flex items-center gap-0 rounded-full bg-surfaceContainerHighest p-1 text-onSurfaceVariant">
+          <template x-for="t in [['queue','Queue'],['history','History'],['lyrics','Lyrics']]" :key="t[0]">
+            <button type="button" role="tab" :aria-selected="tab === t[0]" class="interactable h-10 rounded-full px-5 text-label-lg transition-colors" :class="tab === t[0] ? 'bg-secondaryContainer text-onSecondaryContainer' : ''" @click="tab = t[0]; if (t[0] === 'lyrics' && lyricsStatus === 'idle' && currentTrack) fetchLyrics()" x-text="t[1]"></button>
+          </template>
+        </div>
+      </div>
+
+      <div class="grow px-4 pt-4 pb-8 lg:px-8">
+        <!-- Queue -->
+        <div x-show="tab === 'queue'">
+          <div x-show="queue.length === 0" class="flex flex-col items-center justify-center gap-3 pt-32 text-center">
+            <svg class="size-28 fill-current opacity-60" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-playlistMusic"></use></svg>
+            <p class="text-body-lg">Your queue is empty</p>
+            <a href="/library/tracks" @click.prevent="go('/library/tracks')" class="m3-button-base outlined-button h-10 px-6 text-base"><span class="button-content">Play something here</span></a>
+          </div>
+          <div class="flex flex-col" x-show="queue.length > 0">
+            <template x-for="(track, i) in queue" :key="track.id + ':' + i">
+              <div class="interactable h-16 shrink-0 gap-3 rounded-lg px-3 text-left" role="button" tabindex="0" @click="playQueueIndex(i)" @keydown.enter="playQueueIndex(i)">
+                <div class="relative size-10 shrink-0 overflow-hidden rounded bg-secondaryContainerVariant">
+                  <template x-if="track.artwork"><img :src="track.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+                  <template x-if="!track.artwork"><svg class="absolute inset-0 m-auto size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg></template>
+                </div>
+                <div class="min-w-0 grow">
+                  <div class="truncate text-title-sm" :class="i === queuePos ? 'text-primary' : ''" x-text="track.name"></div>
+                  <div class="truncate text-body-sm opacity-80" x-text="track.artist"></div>
+                </div>
+                <span class="text-body-md tabular-nums opacity-80" x-text="formatTime(track.duration)"></span>
+                <button type="button" class="m3-button-base flex size-10 shrink-0 items-center justify-center rounded-full" aria-label="Remove from queue" @click.stop="removeFromQueue(i)">
+                  <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-5" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-close"></use></svg></div>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div x-show="tab === 'history'" x-cloak>
+          <div x-show="history.length === 0" class="flex flex-col items-center justify-center gap-3 pt-32 text-center">
+            <svg class="size-28 fill-current opacity-60" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-history"></use></svg>
+            <p class="text-body-lg">Nothing played yet</p>
+          </div>
+          <div class="flex flex-col" x-show="history.length > 0">
+            <template x-for="(track, i) in history" :key="track.id + ':' + i">
+              <div class="interactable h-16 shrink-0 gap-3 rounded-lg px-3 text-left" role="button" tabindex="0" @click="playFromList(history, i)" @keydown.enter="playFromList(history, i)">
+                <div class="relative size-10 shrink-0 overflow-hidden rounded bg-secondaryContainerVariant">
+                  <template x-if="track.artwork"><img :src="track.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+                  <template x-if="!track.artwork"><svg class="absolute inset-0 m-auto size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg></template>
+                </div>
+                <div class="min-w-0 grow">
+                  <div class="truncate text-title-sm" x-text="track.name"></div>
+                  <div class="truncate text-body-sm opacity-80" x-text="track.artist"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Lyrics -->
+        <div x-show="tab === 'lyrics'" x-cloak class="mx-auto max-w-2xl select-text">
+          <div x-show="!currentTrack" class="flex flex-col items-center justify-center gap-3 pt-32 text-center">
+            <svg class="size-28 fill-current opacity-60" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg>
+            <p class="text-body-lg">Play a track to see its lyrics</p>
+          </div>
+          <div x-show="currentTrack && lyricsStatus === 'loading'" class="flex justify-center pt-32"><div class="size-8 animate-spin rounded-full border-4 border-onSecondaryContainer/30 border-t-onSecondaryContainer"></div></div>
+          <div x-show="currentTrack && lyricsStatus === 'error'" class="pt-32 text-center text-body-lg text-error" x-text="lyricsContent"></div>
+          <div x-show="currentTrack && lyricLines.length > 0" class="flex flex-col gap-5 py-24">
+            <template x-for="(line, i) in lyricLines" :key="i">
+              <button type="button" class="text-left text-headline-sm transition-all duration-300" :data-lyric-active="i === activeLyricIndex" :class="i === activeLyricIndex ? 'opacity-100' : 'opacity-40 hover:opacity-70'" @click="seekToLine(line)" x-text="line.text || '·'"></button>
+            </template>
+          </div>
+          <pre x-show="currentTrack && lyricLines.length === 0 && lyricsStatus === 'plain'" class="whitespace-pre-wrap py-8 font-sans text-body-lg" x-text="lyricsContent"></pre>
+          <div x-show="currentTrack && lyricsStatus === 'none'" class="pt-32 text-center text-body-lg opacity-70">No lyrics found for this track</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

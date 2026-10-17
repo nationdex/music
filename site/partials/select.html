@@ -1,0 +1,9 @@
+<button type="button" x-ref="trigger" class="select-anchor relative flex h-10 w-40 cursor-pointer appearance-none items-center gap-2 truncate overflow-hidden rounded border border-outlineVariant bg-transparent pr-2 pl-4 text-left text-body-lg text-onSurface" aria-haspopup="listbox" :aria-expanded="open" @click="toggle()">
+  <div class="truncate grow" x-text="label"></div>
+  <svg class="size-5 shrink-0 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-menuDown"></use></svg>
+</button>
+<div x-show="open" x-cloak x-ref="list" @click.outside="open = false" @keydown.escape.prevent.stop="close()" @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" role="listbox" x-anchor.bottom-start.offset.4="$refs.trigger" :style="'min-width:' + $refs.trigger.offsetWidth + 'px'" class="z-20 flex flex-col rounded-sm bg-surfaceContainerHighest py-2 shadow-xl">
+  <template x-for="opt in options" :key="opt[0]">
+    <button type="button" role="option" :aria-selected="opt[0] === value" class="interactable flex h-10 w-full cursor-pointer items-center overflow-hidden px-4 text-left text-body-lg" :class="opt[0] === value ? 'text-primary' : 'text-onSurface'" @click="choose(opt[0])" x-text="opt[1]"></button>
+  </template>
+</div>

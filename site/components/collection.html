@@ -1,0 +1,149 @@
+<div class="flex gap-4 px-4" x-data x-init="searchFilter = ''">
+  <!-- List column -->
+  <div class="flex min-w-0 grow flex-col self-start overflow-y-auto pb-4 lg:sticky lg:top-0 lg:w-98.5 lg:shrink-0 lg:grow-0" style="scrollbar-gutter: stable; max-height: calc(100dvh - var(--bottom-overlay-height, 0px))" x-show="!(isNarrow() && collectionDetail())">
+    <div class="@container sticky top-2 z-1 mt-2 mb-4 flex min-h-14 w-full shrink-0 items-center gap-1 lg:w-92 rounded-2xl border border-primary/10 bg-surfaceContainerHighest px-2.5 text-onSurface">
+      <input type="search" x-model="searchFilter" :placeholder="'Search ' + route.name" :aria-label="'Search ' + route.name" autocomplete="off"
+             class="h-11 min-w-0 grow bg-transparent px-2 text-body-md text-onSurface placeholder:text-onSurface/60 focus:outline-none" />
+      <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="sortAsc ? 'Sort descending' : 'Sort ascending'" @click="sortAsc = !sortAsc">
+        <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6 transition-transform" :class="sortAsc ? '' : 'rotate-180'" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-sortAscending"></use></svg></div>
+      </button>
+      <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="More options" @click="openLibraryMenu($event)">
+        <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-moreVertical"></use></svg></div>
+      </button>
+    </div>
+
+    <!-- New playlist -->
+    <div x-show="route.name === 'playlists'" class="mb-2 flex w-full shrink-0 justify-end lg:w-92">
+      <button type="button" class="m3-button-base outlined-button h-10 px-6 text-base" @click="openDialog('newPlaylist')">
+        <span class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-plus"></use></svg><span>New playlist</span></span>
+      </button>
+    </div>
+
+    <!-- Albums grid -->
+    <div x-show="route.name === 'albums'" class="grid gap-4 pb-4" style="grid-template-columns: repeat(auto-fill, 13.75rem)">
+      <template x-for="album in filteredAlbums" :key="album.id">
+        <a :href="'/library/albums/' + album.id" @click.prevent="go('/library/albums/' + album.id)"
+           class="interactable group w-55 flex-col items-stretch overflow-hidden rounded-2xl bg-surfaceContainer text-left" :class="route.id === album.id ? 'bg-surfaceContainerHigh' : ''">
+          <div class="relative aspect-square w-full overflow-hidden rounded-2xl bg-secondaryContainer text-onSecondaryContainer">
+            <template x-if="album.artwork"><img :src="album.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+            <template x-if="!album.artwork"><svg class="absolute inset-0 m-auto size-12 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-album"></use></svg></template>
+          </div>
+          <div class="min-w-0 px-2.5 py-2.5">
+            <div class="truncate text-body-md text-onSurface" x-text="album.name"></div>
+            <div class="truncate text-body-md text-onSurfaceVariant" x-text="album.artist"></div>
+          </div>
+        </a>
+      </template>
+    </div>
+
+    <!-- Artists grid -->
+    <div x-show="route.name === 'artists'" class="grid gap-4 pb-4" style="grid-template-columns: repeat(auto-fill, 13.75rem)">
+      <template x-for="artist in filteredArtists" :key="artist.id">
+        <a :href="'/library/artists/' + artist.id" @click.prevent="go('/library/artists/' + artist.id)"
+           class="interactable w-55 flex-col items-stretch overflow-hidden rounded-2xl bg-surfaceContainer p-3 text-left" :class="route.id === artist.id ? 'bg-surfaceContainerHigh' : ''">
+          <div class="relative aspect-square w-full overflow-hidden rounded-full bg-secondaryContainer text-onSecondaryContainer">
+            <template x-if="artist.artwork"><img :src="artist.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+            <template x-if="!artist.artwork"><svg class="absolute inset-0 m-auto size-12 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-person"></use></svg></template>
+          </div>
+          <div class="truncate pt-3 text-body-md text-onSurface" x-text="artist.name"></div>
+        </a>
+      </template>
+    </div>
+
+    <!-- Playlists list -->
+    <div x-show="route.name === 'playlists'" class="flex flex-col pb-4">
+      <template x-for="pl in filteredPlaylists" :key="pl.id">
+        <a :href="'/library/playlists/' + pl.id" @click.prevent="go('/library/playlists/' + pl.id)"
+           class="interactable h-14 shrink-0 gap-3 rounded-lg px-2 text-left text-onSurface" :class="route.id === pl.id ? 'bg-secondaryContainer text-onSecondaryContainer' : ''">
+          <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surfaceContainerHighest text-onSurfaceVariant">
+            <template x-if="pl.artwork"><img :src="pl.artwork" alt="" class="size-full object-cover" /></template>
+            <template x-if="!pl.artwork"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use :href="pl.id === 'favorites' ? '#system-icon-favorite' : '#system-icon-playlistMusic'"></use></svg></template>
+          </div>
+          <div class="min-w-0">
+            <div class="truncate text-body-md" x-text="pl.name"></div>
+          </div>
+        </a>
+      </template>
+    </div>
+
+    <div x-show="(route.name === 'albums' && filteredAlbums.length === 0) || (route.name === 'artists' && filteredArtists.length === 0)" class="flex grow flex-col items-center justify-center gap-1 text-center">
+      <h2 class="text-title-lg text-onPrimaryContainer" x-text="'No ' + route.name + ' yet'"></h2>
+      <p class="text-body-md text-onSurfaceVariant">Add music to your library to see it here</p>
+    </div>
+  </div>
+
+  <!-- Details pane -->
+  <section class="mt-4 min-w-0 grow rounded-3xl bg-surfaceContainer max-lg:hidden"
+           :class="{ 'max-lg:block!': collectionDetail() }" style="min-height: calc(100dvh - 1.5rem - var(--bottom-overlay-height, 0px)); border: 1px solid color-mix(in srgb, var(--color-primary) 6%, transparent)">
+    <!-- Empty -->
+    <div x-show="!collectionDetail()" class="flex size-full flex-col items-center justify-center gap-4 px-6 pb-40 text-center text-onSurface">
+      <svg class="size-30 fill-current opacity-60" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-album"></use></svg>
+      <p class="text-body-lg">Select something from<br />the list to be shown here</p>
+      <svg class="h-14 w-16 -translate-x-8 opacity-60" viewBox="0 0 64 56" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M52 4c2 20-10 38-38 44"/><path d="M26 38 12 49l17 4"/></svg>
+    </div>
+
+    <!-- Album / artist / playlist detail -->
+    <div x-show="collectionDetail()" x-cloak class="flex flex-col pb-4" x-data="{ d: null }" x-effect="d = collectionDetail()">
+      <div class="flex h-16 shrink-0 items-center gap-2 px-6">
+        <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Back" @click="closeDetail()">
+          <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-backArrow"></use></svg></div>
+        </button>
+        <h2 class="text-title-lg capitalize" x-text="route.name === 'albums' ? 'Album' : route.name === 'artists' ? 'Artist' : 'Playlist'"></h2>
+      </div>
+
+      <div class="mt-4 flex flex-col gap-4 px-4 sm:flex-row" x-show="d">
+        <div class="relative aspect-square w-full shrink-0 overflow-hidden bg-secondaryContainer text-onSecondaryContainer sm:size-60" :class="route.name === 'artists' ? 'rounded-full' : 'rounded-2xl'">
+          <template x-if="d && d.artwork"><img :src="d.artwork" alt="" class="size-full object-cover" /></template>
+          <template x-if="d && !d.artwork"><svg class="absolute inset-0 m-auto size-16 fill-current" viewBox="0 0 24 24" role="presentation"><use :href="route.name === 'artists' ? '#system-icon-person' : '#system-icon-album'"></use></svg></template>
+        </div>
+        <div class="flex min-w-0 grow flex-col rounded-2xl bg-surfaceContainerHigh p-4">
+          <div class="flex items-center gap-3">
+            <svg class="size-8 shrink-0 fill-current opacity-70" viewBox="0 0 24 24" role="presentation"><use :href="route.name === 'albums' ? '#system-icon-album' : route.name === 'artists' ? '#system-icon-person' : '#system-icon-playlistMusic'"></use></svg>
+            <h3 class="truncate text-headline-md" x-text="d && d.name"></h3>
+          </div>
+          <div class="mt-1 text-body-lg" x-show="d && d.artist" x-text="d && d.artist"></div>
+          <div class="mt-1 text-body-md text-onSurfaceVariant" x-text="d && d.meta"></div>
+          <div class="mt-auto flex items-center gap-2 pt-6">
+            <button type="button" class="m3-button-base filled-button h-10 px-6 text-base" @click="d && playFromList(d.tracks, 0)" :disabled="!d || d.tracks.length === 0"><span class="button-content">Play</span></button>
+            <button type="button" class="m3-button-base text-button h-10 px-6 text-base text-onSurface" @click="d && playShuffled(d.tracks)" :disabled="!d || d.tracks.length === 0">
+              <span class="button-content"><span>Shuffle</span><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-shuffle"></use></svg></span>
+            </button>
+            <button type="button" class="m3-button-base ml-auto flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="More options" @click="openDetailMenu($event, d)">
+              <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-moreVertical"></use></svg></div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail tracks -->
+      <div class="mt-4 flex flex-col px-4" x-show="d && d.tracks.length > 0">
+        <template x-for="(track, i) in (d ? d.tracks : [])" :key="track.id">
+          <div class="track-item-container interactable group h-18 shrink-0 rounded-lg text-left text-onSurfaceVariant" role="button" tabindex="0" @click="playFromList(d.tracks, i)" @keydown.enter="playFromList(d.tracks, i)" @contextmenu.prevent="openTrackMenu($event, track)">
+            <div class="grid size-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 pr-2 pl-4 md:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_auto]">
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="relative size-10 shrink-0 overflow-hidden rounded bg-secondaryContainer text-onSecondaryContainer">
+                  <template x-if="track.artwork"><img :src="track.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+                  <template x-if="!track.artwork"><svg class="absolute inset-0 m-auto size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-musicNote"></use></svg></template>
+                </div>
+                <div class="min-w-0">
+                  <div class="truncate text-title-sm" :class="isCurrent(track) ? 'text-primary' : 'text-onSurface'" x-text="track.name"></div>
+                  <div class="truncate text-body-sm" x-text="track.artist"></div>
+                </div>
+              </div>
+              <div class="truncate text-body-md max-md:hidden" x-text="track.album"></div>
+              <div class="flex items-center justify-end gap-1 md:col-start-3">
+                <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="isFavorite(track) ? 'Remove from favorites' : 'Add to favorites'" @click.stop="toggleFavorite(track)">
+                  <div class="button-content"><svg class="pointer-events-none shrink-0 size-6 fill-current" :class="isFavorite(track) ? 'text-primary' : ''" role="presentation" viewBox="0 0 24 24"><use :href="isFavorite(track) ? '#system-icon-favorite' : '#system-icon-favoriteOutline'"></use></svg></div>
+                </button>
+                <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Track options" @click.stop="openTrackMenu($event, track)">
+                  <div class="button-content"><svg class="pointer-events-none shrink-0 size-6 fill-current" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-moreVertical"></use></svg></div>
+                </button>
+                <span class="w-12 shrink-0 text-right text-body-md tabular-nums" x-text="formatTime(track.duration)"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+</div>

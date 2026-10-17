@@ -1,0 +1,14 @@
+{
+  "name": "Adi Music",
+  "short_name": "Adi Music",
+  "description": "Play your local music in the browser with playlists, equalizer, playback speed, and offline listening.",
+  "start_url": "/library/tracks",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#271816",
+  "theme_color": "#271816",
+  "icons": [
+    { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

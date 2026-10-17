@@ -1,0 +1,806 @@
+/* Cascade order: the reset (base) < component classes < generated utilities and the rules below.
+   The reset is imported into a layer so component styles such as .mktg-content-width beat its `* { margin: 0 }`. */
+@layer base, components;
+@import url("/assets/vendor/unocss-reset.css") layer(base);
+
+/* ------------------------------------------------------------------ tokens */
+
+/* Tokens. The Material 3 colors are light-dark() pairs: html { color-scheme } picks the side. */
+:root {
+  --spacing: 0.25rem;
+  --font-sans: "M PLUS Rounded 1c", "App CJK Fallback", system-ui, "Noto Color Emoji", sans-serif;
+
+  /* Material 3 tone tokens. light-dark() follows html { color-scheme }. */
+  --color-primary: light-dark(#c0000c, #ffb4aa);
+  --color-onPrimary: light-dark(#ffffff, #690003);
+  --color-primaryContainer: light-dark(#ffdad5, #930006);
+  --color-onPrimaryContainer: light-dark(#410001, #ffdad5);
+  --color-secondary: light-dark(#80543e, #f4b99f);
+  --color-onSecondary: light-dark(#ffffff, #4b2715);
+  --color-secondaryContainer: light-dark(#ffdbcc, #653d29);
+  --color-secondaryContainerVariant: light-dark(#e5ac92, #3e1d0b);
+  --color-onSecondaryContainer: light-dark(#311304, #ffdbcc);
+  --color-tertiary: light-dark(#845325, #fab981);
+  --color-onTertiary: light-dark(#ffffff, #4c2700);
+  --color-tertiaryContainer: light-dark(#ffdcc1, #683c0f);
+  --color-onTertiaryContainer: light-dark(#2e1500, #ffdcc1);
+  --color-error: light-dark(#ba1a1a, #ffb4ab);
+  --color-surface: light-dark(#fff8f7, #271816);
+  --color-onSurface: light-dark(#271816, #f9dcd8);
+  --color-surfaceVariant: light-dark(#fddbd6, #58413e);
+  --color-onSurfaceVariant: light-dark(#58413e, #dfbfbb);
+  --color-surfaceContainerHighest: light-dark(#f9dcd8, #42302e);
+  --color-surfaceContainerHigh: light-dark(#ffe2de, #372624);
+  --color-surfaceContainer: light-dark(#ffe9e6, #2b1c1a);
+  --color-surfaceContainerLow: light-dark(#fff0ee, #271816);
+  --color-surfaceContainerLowest: light-dark(#ffffff, #180b09);
+  --color-outline: light-dark(#8c716d, #a78a86);
+  --color-outlineVariant: light-dark(#dfbfbb, #58413e);
+  --color-shadow: #000000;
+  --color-scrim: #000000;
+  --color-inverseSurface: light-dark(#3d2c2a, #f9dcd8);
+  --color-inverseOnSurface: light-dark(#ffedea, #271816);
+  --color-inversePrimary: light-dark(#ffb4aa, #c0000c);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --ease-outgoing40: cubic-bezier(0.4, 0, 1, 1);
+  --ease-incoming80: cubic-bezier(0, 0, 0.2, 1);
+}
+
+@layer components {
+  /* Hover / focus state layer for any clickable surface (M3 state layers).
+     Layered so generated utilities (flex-col, items-stretch, ...) can override it. */
+  .interactable {
+    overflow: hidden;
+    appearance: none;
+    border-width: 0; /* width only: Uno's `border` utility sets no style, so keep the reset's `solid` */
+    outline-width: 0;
+    text-decoration: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    z-index: 0;
+    position: relative;
+    transition: outline-width 150ms linear;
+    &::after {
+      display: none;
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: currentColor;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0;
+      transition:
+        opacity 0.2s linear,
+        display 0.2s allow-discrete;
+    }
+    @media (any-hover: hover) {
+      &:hover::after {
+        display: block;
+        opacity: 0.08;
+      }
+      &[disabled]::after {
+        display: none;
+      }
+    }
+    &:is(:focus-visible),
+    &:hover:focus-visible {
+      outline-width: calc(var(--spacing) * 0.5);
+    }
+    &:focus-visible::after {
+      display: block;
+      opacity: 0.12;
+    }
+    @starting-style {
+      &::after {
+        opacity: 0 !important;
+      }
+    }
+  }
+}
+
+/* Hidden until the UnoCSS runtime has generated the first stylesheet (it removes the attribute). */
+[un-cloak] {
+  display: none;
+}
+
+/* ------------------------------------------------------------------- fonts */
+
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/MPLUSRounded1c-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/MPLUSRounded1c-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/MPLUSRounded1c-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "App CJK Fallback";
+  src:
+    local("Noto Sans SC"), local("Noto Sans CJK SC"), local("Noto Sans TC"), local("Noto Sans CJK TC"), local("Noto Sans HK"),
+    local("Noto Sans CJK HK"), local("PingFang SC"), local("PingFang TC"), local("Microsoft YaHei"), local("Microsoft JhengHei");
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  unicode-range: U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+
+/* -------------------------------------------------------------------- base */
+
+html {
+  background-color: var(--color-surface);
+  color: var(--color-onSurface);
+  font-family: var(--font-sans);
+  font-optical-sizing: auto;
+  color-scheme: light;
+  width: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  scroll-padding-top: var(--app-header-height);
+  scroll-padding-bottom: var(--bottom-overlay-height, 0px);
+  --app-header-height: calc(var(--spacing) * 16);
+  --app-max-content-width: calc(var(--spacing) * 400);
+  --mktg-content-max-width: calc(var(--spacing) * 300);
+}
+html.dark {
+  color-scheme: dark;
+}
+html,
+body {
+  min-height: 100dvh;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  -webkit-user-select: none;
+  user-select: none;
+  font-size: calc(var(--spacing) * 3.5);
+  line-height: calc(var(--spacing) * 5);
+  letter-spacing: 0.25px;
+  font-weight: 400;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.select-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-secondary) 30%, transparent) transparent;
+  }
+  :where(:focus) {
+    outline: none;
+  }
+  :where(:focus-visible) {
+    outline: calc(var(--spacing) * 0.5) solid var(--color-onSurface);
+    outline-offset: calc(var(--spacing) * 0.5);
+  }
+  strong {
+    font-weight: 600;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  [x-cloak] {
+    display: none !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .link {
+    text-decoration: underline;
+  }
+  .card {
+    background-color: var(--color-surfaceContainer);
+    display: flex;
+    flex-direction: column;
+    border-radius: calc(var(--spacing) * 2);
+    color: var(--color-onSurface);
+  }
+  .mktg-content-width {
+    width: 100%;
+    max-width: var(--mktg-content-max-width);
+    padding-left: calc(var(--spacing) * 6);
+    padding-right: calc(var(--spacing) * 6);
+    margin-left: auto;
+    margin-right: auto;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+:root {
+  --m3-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-emphasized: cubic-bezier(0.3, 0, 0, 1);
+}
+
+.m3-button-base {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+  transition:
+    background-color 200ms var(--m3-easing-standard),
+    color 200ms var(--m3-easing-standard),
+    box-shadow 200ms var(--m3-easing-standard),
+    border-radius 400ms var(--m3-easing-emphasized),
+    transform 200ms var(--m3-easing-emphasized);
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  /* state layer */
+  z-index: 0;
+}
+.m3-button-base::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s linear;
+}
+@media (any-hover: hover) {
+  .m3-button-base:hover:not(:disabled)::after {
+    opacity: 0.08;
+  }
+}
+.m3-button-base:focus-visible::after {
+  opacity: 0.12;
+}
+.m3-button-base:active:not(:disabled) {
+  border-radius: 12px;
+  transform: scale(0.97);
+}
+.button-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  z-index: 1;
+  white-space: nowrap;
+}
+.filled-button {
+  background-color: var(--color-primary);
+  color: var(--color-onPrimary);
+}
+.tonal-button {
+  background-color: var(--color-secondaryContainer);
+  color: var(--color-onSecondaryContainer);
+}
+.outlined-button {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-outline);
+}
+.text-button {
+  background-color: transparent;
+  color: var(--color-primary);
+}
+.elevated-button {
+  background-color: var(--color-surfaceContainerLow);
+  color: var(--color-primary);
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.m3-button-base:disabled {
+  cursor: default;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-onSurface) 12%, transparent);
+  color: color-mix(in srgb, var(--color-onSurface) 38%, transparent);
+  box-shadow: none;
+  transform: none;
+  border-radius: 9999px;
+}
+.m3-button-base:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ switch */
+
+.m3-switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0;
+  border: 0.125rem solid var(--color-outline);
+  border-radius: 9999px;
+  background: var(--color-surfaceContainerHighest);
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--m3-easing-standard),
+    border-color 200ms var(--m3-easing-standard);
+}
+.m3-switch.checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+.m3-switch .handle {
+  position: absolute;
+  top: 50%;
+  left: 0.5rem;
+  display: flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--color-outline);
+  color: var(--color-surfaceContainerHighest);
+  transform: translateY(-50%) scale(1);
+  transition:
+    left 350ms var(--m3-easing-standard),
+    transform 350ms var(--m3-easing-standard),
+    background-color 150ms var(--m3-easing-standard),
+    color 150ms var(--m3-easing-standard);
+  pointer-events: none;
+}
+.m3-switch.checked .handle {
+  left: 1.75rem;
+  background: var(--color-onPrimary);
+  color: var(--color-primary);
+  transform: translateY(-50%) scale(1.5);
+}
+.m3-switch .icon {
+  position: absolute;
+  display: flex;
+  opacity: 0;
+  transform: scale(0.667);
+  transition:
+    opacity 350ms var(--m3-easing-standard),
+    transform 350ms var(--m3-easing-standard);
+}
+.m3-switch:not(.checked) .unchecked-icon,
+.m3-switch.checked .checked-icon {
+  opacity: 1;
+}
+.m3-switch .hover {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+  transition:
+    left 350ms var(--m3-easing-standard),
+    background-color 150ms var(--m3-easing-standard);
+  pointer-events: none;
+}
+.m3-switch.checked .hover {
+  left: 2.25rem;
+}
+.m3-switch:hover .hover {
+  background: color-mix(in srgb, var(--color-onSurface) 8%, transparent);
+}
+.m3-switch.checked:hover .hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+.m3-switch:active .handle {
+  transform: translateY(-50%) scale(1.75);
+}
+.m3-switch:active .icon {
+  transform: scale(0.571);
+}
+.m3-switch:focus-visible {
+  outline: 0.125rem solid var(--color-primary);
+  outline-offset: 0.125rem;
+}
+
+/* ------------------------------------------------------------------ slider
+   M3 expressive slider: 44px hit area, 16px rails, a 4px bar thumb separated
+   from both rails by a 6px gap. --f is the 0..1 value fraction. */
+
+.m3-slider {
+  --f: 0;
+  --thumb: 4px;
+  --gap: 6px;
+  --slider-active: var(--color-primary);
+  --slider-inactive: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  --slider-thumb: var(--color-primary);
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 44px;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+.m3-slider > input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  appearance: none;
+  cursor: pointer;
+}
+.m3-slider > input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: var(--thumb);
+  height: 44px;
+}
+.m3-slider > input[type="range"]:disabled {
+  cursor: default;
+}
+.m3-slider .m3-slider-track {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --tl: calc(var(--f) * (100% - var(--thumb)));
+}
+.m3-slider .m3-slider-active {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  height: 16px;
+  width: max(0px, calc(var(--tl) - var(--gap)));
+  border-radius: 8px 2px 2px 8px;
+  background: var(--slider-active);
+}
+.m3-slider .m3-slider-inactive {
+  position: absolute;
+  right: 0;
+  top: 14px;
+  height: 16px;
+  left: calc(var(--tl) + var(--thumb) + var(--gap));
+  border-radius: 2px 8px 8px 2px;
+  background: var(--slider-inactive);
+}
+.m3-slider .m3-slider-thumb {
+  position: absolute;
+  top: 0;
+  left: var(--tl);
+  width: var(--thumb);
+  height: 100%;
+  border-radius: 8px;
+  background: var(--slider-thumb);
+  transition: transform 150ms var(--m3-easing-standard);
+}
+.m3-slider > input:not(:disabled):active ~ .m3-slider-track .m3-slider-thumb,
+.m3-slider > input:not(:disabled):focus-visible ~ .m3-slider-track .m3-slider-thumb {
+  transform: scaleX(0.5);
+}
+.m3-slider.is-disabled {
+  --slider-active: color-mix(in srgb, var(--color-onSurface) 38%, transparent);
+  --slider-inactive: color-mix(in srgb, var(--color-onSurface) 12%, transparent);
+  --slider-thumb: color-mix(in srgb, var(--color-onSurface) 38%, transparent);
+}
+
+/* -------------------------------------------------------- reduced motion */
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ------------------------------------------------------------------ dialog */
+
+dialog.m3-dialog {
+  --dialog-width: 25rem;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 1.5rem;
+  background: var(--color-surfaceContainerHigh);
+  color: var(--color-onSurface);
+  max-width: calc(100dvw - 1rem);
+  max-height: min(calc(100dvh - 2rem), 37.5rem);
+  width: clamp(16rem, var(--dialog-width), 100dvw - 1.5rem);
+  height: max-content;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+dialog.m3-dialog::backdrop {
+  background: rgb(0 0 0 / 0.22);
+  backdrop-filter: blur(4px);
+}
+dialog.m3-dialog[open] {
+  animation: fade-in 200ms var(--ease-standard);
+}
+
+/* Vertical slider variant (equalizer bands) */
+.m3-slider.vertical {
+  width: 44px;
+  height: 10rem;
+  margin-inline: auto;
+}
+.m3-slider.vertical > input[type="range"] {
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+.m3-slider.vertical > input[type="range"]::-webkit-slider-thumb {
+  width: 44px;
+  height: var(--thumb);
+}
+.m3-slider.vertical .m3-slider-track {
+  --tl: calc(var(--f) * (100% - var(--thumb)));
+}
+.m3-slider.vertical .m3-slider-active {
+  left: 14px;
+  top: auto;
+  bottom: 0;
+  width: 16px;
+  height: max(0px, calc(var(--tl) - var(--gap)));
+  border-radius: 2px 2px 8px 8px;
+}
+.m3-slider.vertical .m3-slider-inactive {
+  right: auto;
+  left: 14px;
+  top: 0;
+  bottom: auto;
+  width: 16px;
+  height: calc(100% - var(--tl) - var(--thumb) - var(--gap));
+  border-radius: 8px 8px 2px 2px;
+}
+.m3-slider.vertical .m3-slider-thumb {
+  left: 0;
+  top: auto;
+  bottom: var(--tl);
+  width: 100%;
+  height: var(--thumb);
+}
+.m3-slider.vertical > input:not(:disabled):active ~ .m3-slider-track .m3-slider-thumb,
+.m3-slider.vertical > input:not(:disabled):focus-visible ~ .m3-slider-track .m3-slider-thumb {
+  transform: scaleY(0.5);
+}
+
+/* ---------------------------------------------------------------- marketing */
+
+.hero-title {
+  font-size: clamp(3.1rem, 7cqw, 6.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+.product-stage {
+  padding: 0.75rem 0.5rem 1rem;
+}
+.product-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--color-outline) 20%, transparent);
+  border-radius: 2rem;
+  background: var(--color-surfaceContainer);
+  padding: 0.65rem;
+  box-shadow:
+    0 30px 70px color-mix(in oklab, var(--color-shadow) 24%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--color-primary) 8%, transparent);
+  transform: perspective(1600px) rotateY(-2deg) rotateX(1deg);
+}
+.product-image {
+  border-radius: 1.45rem;
+}
+.product-glow {
+  position: absolute;
+  inset: 10% 8% 5%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 45%),
+    radial-gradient(circle at 80% 75%, color-mix(in oklab, var(--color-secondary) 20%, transparent), transparent 42%);
+  filter: blur(45px);
+  pointer-events: none;
+}
+.product-chip {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid color-mix(in oklab, var(--color-outline) 22%, transparent);
+  border-radius: 1.25rem;
+  background: color-mix(in oklab, var(--color-surfaceContainerHighest) 92%, transparent);
+  padding: 0.75rem 0.9rem;
+  box-shadow: 0 12px 28px color-mix(in oklab, var(--color-shadow) 16%, transparent);
+  backdrop-filter: blur(16px);
+}
+.product-chip-top {
+  top: 0;
+  right: -0.5rem;
+}
+.product-chip-bottom {
+  bottom: 0;
+  left: -0.5rem;
+}
+@media (width < 64rem) {
+  .product-frame {
+    transform: none;
+  }
+  .product-chip-top {
+    right: 0;
+  }
+  .product-chip-bottom {
+    left: 0;
+  }
+}
+@media (width < 40rem) {
+  .product-chip {
+    display: none;
+  }
+  .product-stage {
+    padding-inline: 0;
+  }
+  .product-frame {
+    border-radius: 1.5rem;
+    padding: 0.4rem;
+  }
+  .product-image {
+    border-radius: 1.1rem;
+  }
+}
+
+.feature-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  min-height: 15rem;
+  flex-direction: column;
+  border: 1px solid color-mix(in oklab, var(--color-outline) 18%, transparent);
+  border-radius: 1.75rem;
+  background: var(--color-surfaceContainer);
+  box-shadow: 0 5px 18px color-mix(in oklab, var(--color-shadow) 7%, transparent);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    opacity 0.5s var(--ease-standard);
+}
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  box-shadow: 0 12px 32px color-mix(in oklab, var(--color-shadow) 12%, transparent);
+}
+.feature-card-icon {
+  display: flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.15rem;
+  background: color-mix(in oklab, var(--color-primaryContainer) 65%, transparent);
+  color: var(--color-primary);
+}
+.feature-secondary .feature-card-icon {
+  background: color-mix(in oklab, var(--color-secondaryContainer) 65%, transparent);
+  color: var(--color-secondary);
+}
+.feature-tertiary .feature-card-icon {
+  background: color-mix(in oklab, var(--color-tertiaryContainer) 65%, transparent);
+  color: var(--color-tertiary);
+}
+.feature-line {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--color-primary) 65%, transparent), transparent);
+  opacity: 0.7;
+}
+.feature-secondary .feature-line {
+  background: linear-gradient(90deg, color-mix(in oklab, var(--color-secondary) 65%, transparent), transparent);
+}
+.feature-tertiary .feature-line {
+  background: linear-gradient(90deg, color-mix(in oklab, var(--color-tertiary) 65%, transparent), transparent);
+}
+
+.how-it-works-card {
+  border: 1px solid color-mix(in oklab, var(--color-outline) 20%, transparent);
+  border-radius: 1.75rem;
+  background: linear-gradient(
+    155deg,
+    color-mix(in oklab, var(--color-surfaceContainerHighest) 97%, transparent),
+    color-mix(in oklab, var(--color-surfaceContainerHigh) 90%, transparent)
+  );
+  box-shadow: 0 4px 16px color-mix(in oklab, var(--color-shadow) 6%, transparent);
+}
+
+.equalizer-shot-wrap {
+  min-height: 15rem;
+  background:
+    radial-gradient(circle at 18% 20%, color-mix(in oklab, var(--color-tertiary) 20%, transparent), transparent 36%),
+    radial-gradient(circle at 80% 82%, color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in oklab, var(--color-surfaceContainerHighest) 18%, transparent), transparent);
+}
+.equalizer-shot-wrap .m3-slider.vertical {
+  height: 12rem;
+}
+
+/* Sections ease in as they scroll into view (Alpine Intersect toggles .is-in). */
+.reveal {
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition:
+    opacity 0.6s var(--ease-standard) var(--d, 0ms),
+    transform 0.6s var(--ease-standard) var(--d, 0ms);
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+html.reduce-motion .reveal {
+  opacity: 1;
+  transform: none;
+}
+.feature-card.reveal {
+  transition:
+    opacity 0.6s var(--ease-standard) var(--d, 0ms),
+    transform 0.6s var(--ease-standard) var(--d, 0ms),
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.feature-card.reveal.is-in:hover {
+  transform: translateY(-3px);
+  transition-duration: 0.25s;
+  transition-delay: 0ms;
+}

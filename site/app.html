@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en" class="dark" un-cloak>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Adi Music</title>
+    <meta name="description" content="Play your local music in the browser with playlists, equalizer, playback speed, and offline listening. No uploads, no sign-up." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#271816" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/images/logo-64.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/images/icon-192.png" />
+    <link rel="preload" href="/fonts/MPLUSRounded1c-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="/assets/vendor/unocss-reset.css" as="style" />
+    <link rel="stylesheet" href="/assets/app.css" />
+    <!-- UnoCSS runtime: generates the utility CSS in the browser (no build step). Order matters: config, preset, core. -->
+    <script src="/assets/uno.config.js"></script>
+    <script src="/assets/vendor/unocss-preset-wind4.js"></script>
+    <script src="/assets/vendor/unocss-runtime-core.js"></script>
+    <noscript><style>[un-cloak] { display: block; }</style></noscript>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script defer src="/assets/vendor/alpine-persist.min.js"></script>
+    <script defer src="/assets/vendor/alpine-anchor.min.js"></script>
+    <script defer src="/assets/vendor/alpine-focus.min.js"></script>
+    <script defer src="/assets/vendor/alpine.min.js"></script>
+  </head>
+
+  <body x-data="playerApp()" x-init="boot()" @keydown.window="onKey($event)" @dragover.window.prevent="dragging = true" @dragleave.window="dragging = false" @drop.window.prevent="onDrop($event)">
+    <!--# include virtual="/partials/icons.html" -->
+<div id="app" :class="{ 'is-player-route': route.name === 'player' }">
+  <!-- Desktop navigation rail -->
+  <nav aria-label="Primary" class="desktop-sidebar fixed top-20 left-4 z-1 hidden h-max w-16 flex-col items-center gap-2 sm:flex" x-show="route.name !== 'player' && route.name !== 'settings'">
+    <template x-for="item in nav" :key="item.path">
+      <a :href="item.path" @click.prevent="go(item.path)" :aria-label="item.label" :aria-current="isNavActive(item) ? 'page' : null"
+         class="m3-button-base flex h-14 w-20 shrink-0 items-center justify-center" style="min-width:5rem">
+        <div class="button-content">
+          <div class="flex items-center justify-center rounded-full p-2 transition-colors duration-200"
+               :class="isNavActive(item) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'text-onSurface'">
+            <svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="'#system-icon-' + item.icon"></use></svg>
+          </div>
+        </div>
+      </a>
+    </template>
+  </nav>
+
+  <!-- Content -->
+  <div class="mx-auto flex w-full max-w-[var(--app-max-content-width)] grow flex-col">
+    <div class="flex h-full grow">
+      <div class="flex w-full grow flex-col" :style="route.name === 'player' ? '' : 'padding-bottom: calc(var(--bottom-overlay-height, 0px) + 16px)'">
+        <div class="flex grow flex-col" :class="(route.name === 'player' || route.name === 'settings') ? '' : 'sm:pl-20'">
+          <main id="main-view" class="flex grow flex-col"></main>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom overlay: mini player -->
+  <div class="page-overlay-container pointer-events-none fixed inset-x-0 bottom-0 z-20 grid gap-y-2 overflow-visible" x-ref="overlay" x-show="route.name !== 'player'"
+       style="grid-template-columns: 1rem 1fr minmax(0, 31.25rem) 1fr 1rem">
+    <div class="col-[2/5] grid grid-cols-subgrid gap-y-2 pb-2">
+      <div id="mini-player" class="pointer-events-auto col-[1/4] mx-auto w-full max-w-225 justify-between overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer sm:h-auto sm:rounded-3xl" style="contain: content">
+        <div class="flex size-full flex-col items-center justify-between gap-4 sm:px-4 sm:pt-2 sm:pb-4">
+          <!-- Timeline -->
+          <div class="timeline-container grid w-full items-center gap-2.5 text-nowrap tabular-nums max-sm:hidden" style="grid-template-columns: auto minmax(0, 1fr) auto">
+            <div class="text-body-sm" x-text="formatTime(currentTime)">00:00</div>
+            <div class="m3-slider" :class="{ 'is-disabled': !currentTrack }" :style="{ '--f': timelineFrac }">
+              <input type="range" min="0" :max="duration || 1" step="0.1" :value="currentTime" @input="seek($event)" :disabled="!currentTrack" aria-label="Seek" />
+              <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+            </div>
+            <div class="text-right text-body-sm" x-text="formatTime(duration)">00:00</div>
+          </div>
+
+          <div class="flex h-min w-full grow items-center py-0.5" style="display:grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr)">
+            <!-- Track info / expand -->
+            <div class="flex min-w-0 grow items-center">
+              <a href="/player" @click.prevent="go('/player')" :aria-label="currentTrack ? 'Open full player' : 'Open player'"
+                 class="m3-button-base group flex min-w-0 grow items-center pr-2 sm:h-12 sm:max-w-70">
+                <div class="button-content min-w-0">
+                  <div class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary">
+                    <template x-if="currentTrack && currentTrack.artwork"><img :src="currentTrack.artwork" alt="" class="size-full object-cover" /></template>
+                    <svg class="pointer-events-none fill-current absolute inset-0 m-auto size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-chevronUp"></use></svg>
+                  </div>
+                  <template x-if="currentTrack">
+                    <div class="ml-3 mr-1 grid min-w-0 sm:ml-3">
+                      <div class="truncate text-body-md" x-text="currentTrack.name"></div>
+                      <div class="truncate text-body-sm" x-text="currentTrack.artist"></div>
+                    </div>
+                  </template>
+                </div>
+              </a>
+            </div>
+
+            <!-- Transport -->
+            <div class="flex items-center gap-2 max-sm:hidden">
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="shuffle ? 'Disable shuffle' : 'Enable shuffle'" :aria-pressed="shuffle" @click="toggleShuffle()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" :class="shuffle ? 'text-primary' : ''" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-shuffle"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Play previous track" @click="prevTrack()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-fastRewind"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="togglePlay()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="isPlaying ? '#system-icon-pause' : '#system-icon-play'"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Play next track" @click="nextTrack()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-fastForward"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="'Repeat: ' + repeat" :aria-pressed="repeat !== 'off'" @click="cycleRepeat()">
+                <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" :class="repeat !== 'off' ? 'text-primary' : ''" role="presentation" viewBox="0 0 24 24"><use :href="repeat === 'one' ? '#system-icon-repeatOnce' : '#system-icon-repeat'"></use></svg></div>
+              </button>
+            </div>
+
+            <!-- Volume -->
+            <div class="flex min-w-0 items-center justify-end max-sm:hidden" x-show="settings.volumeInPlayer">
+              <div class="m3-slider" style="max-width: 8.5rem" :style="{ '--f': muted ? 0 : volume }">
+                <input type="range" min="0" max="1" step="0.01" :value="muted ? 0 : volume" @input="setVolume($event)" aria-label="Volume" />
+                <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+              </div>
+            </div>
+
+            <!-- Compact controls (narrow screens) -->
+            <div class="mx-auto flex items-center gap-2 sm:hidden" style="grid-column: 2 / 4">
+              <button type="button" class="m3-button-base flex size-11 items-center justify-center rounded-full" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="togglePlay()">
+                <div class="button-content"><svg class="pointer-events-none fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="isPlaying ? '#system-icon-pause' : '#system-icon-play'"></use></svg></div>
+              </button>
+              <button type="button" class="m3-button-base flex size-11 items-center justify-center rounded-full" aria-label="Play next track" @click="nextTrack()">
+                <div class="button-content"><svg class="pointer-events-none fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-fastForward"></use></svg></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile navigation: second row of the overlay so the player sits above it -->
+    <nav aria-label="Primary" class="pointer-events-auto col-[1/6] grid h-16 bg-surfaceContainer sm:hidden" style="grid-template-columns: repeat(5, minmax(0, 1fr))" x-show="route.name !== 'settings'">
+      <template x-for="item in nav.filter((i) => i.name !== 'home')" :key="item.path">
+        <a :href="item.path" @click.prevent="go(item.path)" :aria-label="item.label" :aria-current="isNavActive(item) ? 'page' : null" class="m3-button-base flex h-full items-center justify-center rounded-none">
+          <div class="button-content">
+            <div class="flex items-center justify-center rounded-full p-2 transition-colors duration-200" :class="isNavActive(item) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'text-onSurface'">
+              <svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="'#system-icon-' + item.icon"></use></svg>
+            </div>
+          </div>
+        </a>
+      </template>
+    </nav>
+  </div>
+
+  <!-- Hidden media hosts -->
+  <audio id="audio-player" @timeupdate="onTimeUpdate()" @loadedmetadata="onLoadedMetadata()" @ended="onEnded()" @error="onAudioError()"></audio>
+  <div id="yt-player" aria-hidden="true" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden"></div>
+
+  <!-- Drop overlay -->
+  <div x-show="dragging" x-cloak class="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-surface/80 backdrop-blur-sm">
+    <svg class="size-16 animate-bounce fill-primary" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-folder"></use></svg>
+    <p class="text-title-lg font-bold text-onSurface">Drop files here to add them</p>
+  </div>
+
+  <!-- Menu host: positioned by Alpine Anchor, focus trapped by Alpine Focus -->
+  <div x-ref="menuGhost" class="pointer-events-none fixed size-0" aria-hidden="true"></div>
+  <div x-show="menu.open" x-cloak class="fixed inset-0 z-40" @click="closeMenu()" @contextmenu.prevent="closeMenu()" @keydown.escape.window="closeMenu()">
+    <template x-if="menu.open && menu.anchor">
+      <div class="absolute min-w-48 max-w-72 overflow-hidden rounded-2xl bg-surfaceContainerHigh py-2 text-onSurface shadow-lg"
+           x-anchor.bottom-end.offset.4="menu.anchor" x-trap="menu.ready" @click.stop role="menu">
+        <template x-for="(item, i) in menu.items" :key="i">
+          <button type="button" role="menuitem" class="interactable w-full gap-3 px-4 py-2.5 text-left text-body-md" @click="runMenuItem(item)">
+            <svg class="size-5 shrink-0 fill-current opacity-80" viewBox="0 0 24 24" role="presentation"><use :href="'#system-icon-' + item.icon"></use></svg>
+            <span x-text="item.label"></span>
+          </button>
+        </template>
+      </div>
+    </template>
+  </div>
+
+  <!-- Snackbars -->
+  <div class="pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4" style="bottom: calc(var(--bottom-overlay-height, 0px) + 16px)">
+    <template x-for="sb in snackbars" :key="sb.id">
+      <div class="pointer-events-auto flex min-h-12 w-full max-w-lg items-center gap-3 rounded-lg bg-inverseSurface px-4 py-2 text-body-md text-inverseOnSurface shadow-lg" role="status">
+        <span class="grow" x-text="sb.message"></span>
+        <button type="button" x-show="sb.action" class="m3-button-base h-9 px-3 text-label-lg text-inversePrimary" @click="sb.action && sb.action.run(); dismissSnackbar(sb.id)"><span class="button-content" x-text="sb.action && sb.action.label"></span></button>
+      </div>
+    </template>
+  </div>
+
+  <!-- Dialogs (native <dialog>: focus trap + Esc come for free) -->
+  <dialog id="dlg-equalizer" class="m3-dialog" style="--dialog-width: 44rem" x-effect="syncDialog($el, 'equalizer')" @close="onDialogClose('equalizer')" @click="if ($event.target === $el) closeDialog()">
+    <form method="dialog" class="contents">
+      <header class="flex items-center justify-between px-6 py-6"><div class="text-headline-sm">Equalizer</div>
+        <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Close" @click="closeDialog()"><div class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-close"></use></svg></div></button>
+      </header>
+      <div class="flex flex-col text-onSurfaceVariant">
+        <div class="mb-2 flex gap-2 overflow-x-auto px-6 pb-4">
+          <template x-for="name in Object.keys(EQ_PRESETS)" :key="name">
+            <button type="button" class="m3-button-base h-8 shrink-0 px-4 text-label-lg" :class="selectedEqPreset === name ? 'tonal-button' : 'outlined-button'" @click="applyEqPreset(name)"><span class="button-content" x-text="name"></span></button>
+          </template>
+        </div>
+        <div class="grid gap-3 overflow-x-auto overflow-y-hidden overscroll-none px-4 pb-3" style="grid-template-columns: repeat(10, minmax(3rem, 1fr))">
+          <template x-for="(band, i) in eqBands" :key="band.freq">
+            <div class="flex flex-col items-center gap-2">
+              <span class="text-label-sm tabular-nums text-onSurface" x-text="(band.gain > 0 ? '+' : '') + band.gain + ' dB'"></span>
+              <div class="m3-slider vertical h-40" :style="{ '--f': (band.gain + 12) / 24 }">
+                <input type="range" min="-12" max="12" step="1" :value="band.gain" @input="updateEqBand(i, $event.target.value)" :aria-label="band.freq + ' gain'" />
+                <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+              </div>
+              <span class="text-label-sm tabular-nums" x-text="band.freq"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+      <footer class="flex items-center justify-between px-6 pt-3 pb-6">
+        <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="applyEqPreset('Flat')"><span class="button-content">Reset</span></button>
+        <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="closeDialog()"><span class="button-content">Close</span></button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-newPlaylist" class="m3-dialog" x-effect="syncDialog($el, 'newPlaylist')" @close="onDialogClose('newPlaylist')" @click="if ($event.target === $el) closeDialog()">
+    <form method="dialog" class="contents" @submit.prevent="submitNewPlaylist()">
+      <header class="px-6 pt-6 pb-4"><div class="text-headline-sm">New playlist</div></header>
+      <div class="px-6 text-onSurfaceVariant">
+        <label class="relative block rounded-t bg-surfaceContainerHighest">
+          <span class="absolute top-2 left-4 text-label-md text-primary">Name</span>
+          <input type="text" x-model="dialog.name" x-ref="newPlaylistName" maxlength="80" autocomplete="off" required class="h-14 w-full rounded-t border-b-2 border-primary bg-transparent px-4 pt-5 text-body-lg text-onSurface focus:outline-none" />
+        </label>
+      </div>
+      <footer class="flex items-center justify-end gap-2 px-6 pt-6 pb-6">
+        <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="closeDialog()"><span class="button-content">Cancel</span></button>
+        <button type="submit" class="m3-button-base text-button h-10 px-4 text-base" :disabled="!dialog.name || !dialog.name.trim()"><span class="button-content">Create</span></button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-addToPlaylist" class="m3-dialog" x-effect="syncDialog($el, 'addToPlaylist')" @close="onDialogClose('addToPlaylist')" @click="if ($event.target === $el) closeDialog()">
+    <header class="px-6 pt-6 pb-4"><div class="text-headline-sm">Add to playlist</div></header>
+    <div class="flex max-h-80 flex-col overflow-y-auto px-2 text-onSurface">
+      <template x-for="pl in playlistsView.filter(p => p.id !== 'favorites')" :key="pl.id">
+        <button type="button" class="interactable h-14 shrink-0 gap-3 rounded-lg px-4 text-left" @click="addTrackToPlaylist(dialog.track, pl.id)">
+          <svg class="size-6 shrink-0 fill-current opacity-80" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-playlistMusic"></use></svg>
+          <span class="truncate text-body-lg" x-text="pl.name"></span>
+        </button>
+      </template>
+      <div x-show="playlistsView.filter(p => p.id !== 'favorites').length === 0" class="px-4 py-6 text-body-md text-onSurfaceVariant">No playlists yet.</div>
+    </div>
+    <footer class="flex items-center justify-between px-6 pt-3 pb-6">
+      <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="openDialog('newPlaylist', { track: dialog.track })"><span class="button-content">New playlist</span></button>
+      <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="closeDialog()"><span class="button-content">Cancel</span></button>
+    </footer>
+  </dialog>
+
+  <dialog id="dlg-confirm" class="m3-dialog" x-effect="syncDialog($el, 'confirm')" @close="onDialogClose('confirm')" @click="if ($event.target === $el) closeDialog()">
+    <header class="px-6 pt-6 pb-4"><div class="text-headline-sm" x-text="dialog.title"></div></header>
+    <div class="px-6 text-body-md text-onSurfaceVariant" x-text="dialog.body"></div>
+    <footer class="flex items-center justify-end gap-2 px-6 pt-6 pb-6">
+      <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="closeDialog()"><span class="button-content">Cancel</span></button>
+      <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="confirmDialog()"><span class="button-content" x-text="dialog.confirmLabel"></span></button>
+    </footer>
+  </dialog>
+</div>
+  </body>
+</html>

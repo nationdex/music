@@ -1,0 +1,10 @@
+# Normalise text to LF in the repository; scripts must keep LF for /bin/sh.
+* text=auto eol=lf
+*.sh text eol=lf
+# Binary assets: never diff or EOL-convert.
+*.woff2 binary
+*.ttf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.webp binary

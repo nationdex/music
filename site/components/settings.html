@@ -1,0 +1,133 @@
+<div class="flex grow flex-col" x-data="{ scrolled: false }" @scroll.window.passive="scrolled = window.scrollY > 4">
+  <div class="h-16 shrink-0"></div>
+  <header class="fixed inset-x-0 top-0 z-10 flex h-16 shrink-0 transition-[background-color] duration-200 ease-in-out" :class="scrolled ? 'bg-surfaceContainerHigh' : ''">
+    <div class="mx-auto flex w-full max-w-[var(--app-max-content-width)] items-center justify-end gap-2 pr-2 pl-6">
+      <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Back" @click="goBack()">
+        <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-backArrow"></use></svg></div>
+      </button>
+      <h1 class="mr-auto text-title-lg">Settings</h1>
+    </div>
+  </header>
+
+  <div class="flex grow flex-col px-4 pb-8">
+    <!-- Directories / storage -->
+    <section class="card mx-auto w-full overflow-clip text-body-lg" style="max-width: 56.25rem">
+      <div class="flex flex-col p-4">
+        <div class="flex items-center gap-2 text-title-sm">Library</div>
+        <div class="mt-1 mb-4 text-body-sm text-onSurfaceVariant">All data is kept on your device</div>
+        <div class="flex flex-wrap items-stretch gap-2">
+          <div class="flex min-w-0 items-center gap-3 rounded-lg bg-tertiaryContainer px-3 py-2 text-onTertiaryContainer">
+            <svg class="size-4 shrink-0 fill-current opacity-70" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-information"></use></svg>
+            <div class="min-w-0">
+              <div class="truncate text-body-md">Tracks inside app storage</div>
+              <div class="text-body-sm" x-text="tracks.length + (tracks.length === 1 ? ' track' : ' tracks')"></div>
+            </div>
+            <button type="button" class="m3-button-base ml-2 flex size-10 shrink-0 items-center justify-center rounded-full" aria-label="Remove all tracks" :disabled="tracks.length === 0" @click="openDialog('clearLibrary')">
+              <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-5" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-trashOutline"></use></svg></div>
+            </button>
+          </div>
+          <label class="interactable flex h-auto min-h-14 cursor-pointer items-center gap-2 rounded-lg border border-outline px-6 text-body-md text-onSurface">
+            <svg class="size-6 shrink-0 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-plus"></use></svg>
+            <span>Import tracks</span>
+            <input type="file" multiple accept="audio/*" class="sr-only" @change="importFiles($event.target.files); $event.target.value = ''" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Appearance -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Appearance</div>
+      <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
+        <div>Application theme</div>
+        <div x-data="m3Select({ get: () => settings.theme, set: (v) => { settings.theme = v; persistSettings(); }, options: [['auto','Auto'],['dark','Dark'],['light','Light']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
+      </div>
+      <div class="flex flex-col justify-between gap-2 border-t border-outlineVariant/50 p-4 sm:flex-row sm:items-center">
+        <div class="min-w-0">Automatically pick color from currently playing song artwork</div>
+        <button type="button" role="switch" class="m3-switch" :class="settings.pickColorFromArtwork ? 'checked' : ''" :aria-checked="settings.pickColorFromArtwork" aria-label="Automatically pick color from artwork" @click="settings.pickColorFromArtwork = !settings.pickColorFromArtwork; persistSettings()">
+          <span class="hover"></span>
+          <span class="handle"><span class="icon unchecked-icon"></span><span class="icon checked-icon"><svg class="size-3 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-check"></use></svg></span></span>
+        </button>
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-outlineVariant/50 p-4">
+        <div>Application primary color</div>
+        <div class="flex items-center gap-2">
+          <button type="button" x-show="settings.accent" class="m3-button-base outlined-button h-10 px-4 text-base" @click="settings.accent = ''; persistSettings()"><span class="button-content">Reset</span></button>
+          <label class="m3-button-base tonal-button relative h-10 cursor-pointer px-5 text-base">
+            <span class="button-content"><svg class="size-5 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-eyedropper"></use></svg><span>Pick color</span></span>
+            <input type="color" class="absolute inset-0 size-full cursor-pointer opacity-0" :value="settings.accent || '#c0000c'" @input="setAccent($event.target.value)" aria-label="Application primary color" />
+          </label>
+        </div>
+      </div>
+      <div class="flex flex-col justify-between gap-2 border-t border-outlineVariant/50 p-4 sm:flex-row sm:items-center">
+        <div>Motion</div>
+        <div x-data="m3Select({ get: () => settings.motion, set: (v) => { settings.motion = v; persistSettings(); }, options: [['auto','Auto'],['reduced','Reduced'],['full','Full']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
+      </div>
+    </section>
+
+    <!-- Player -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Player</div>
+      <div class="flex items-center justify-between gap-2 p-4">
+        <div class="min-w-0">Display volume slider inside player</div>
+        <button type="button" role="switch" class="m3-switch" :class="settings.volumeInPlayer ? 'checked' : ''" :aria-checked="settings.volumeInPlayer" aria-label="Display volume slider inside player" @click="settings.volumeInPlayer = !settings.volumeInPlayer; persistSettings()">
+          <span class="hover"></span>
+          <span class="handle"><span class="icon unchecked-icon"></span><span class="icon checked-icon"><svg class="size-3 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-check"></use></svg></span></span>
+        </button>
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-outlineVariant/50 p-4">
+        <div>Equalizer</div>
+        <button type="button" class="m3-button-base tonal-button h-10 px-5 text-base" @click="openDialog('equalizer')"><span class="button-content">Open equalizer</span></button>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 border-t border-outlineVariant/50 p-4">
+        <div>Playback speed</div>
+        <div class="flex items-center gap-2">
+          <span class="text-label-lg tabular-nums" x-text="playbackSpeed + 'x'"></span>
+          <div class="m3-slider" style="width: 10.5rem" :style="{ '--f': (playbackSpeed - 0.5) / 1.5 }">
+            <input type="range" min="0.5" max="2" step="0.05" :value="playbackSpeed" @input="setSpeed($event.target.value)" aria-label="Playback speed" />
+            <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+          </div>
+        </div>
+        <button type="button" class="m3-button-base outlined-button ml-auto h-10 px-4 text-base" :disabled="playbackSpeed === 1" @click="setSpeed(1)"><span class="button-content">Reset speed</span></button>
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-outlineVariant/50 p-4">
+        <div>Preserve pitch</div>
+        <button type="button" role="switch" class="m3-switch" :class="settings.preservePitch !== false ? 'checked' : ''" :aria-checked="settings.preservePitch !== false" aria-label="Preserve pitch" @click="settings.preservePitch = settings.preservePitch === false; persistSettings()">
+          <span class="hover"></span>
+          <span class="handle"><span class="icon unchecked-icon"></span><span class="icon checked-icon"><svg class="size-3 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-check"></use></svg></span></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Discovery -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Discovery</div>
+      <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
+        <div class="min-w-0">
+          <div>Discovery source</div>
+          <div class="text-body-sm text-onSurfaceVariant">YouTube plays full tracks. Apple plays 30-second previews.</div>
+        </div>
+        <div x-data="m3Select({ get: () => settings.discoverySource, set: (v) => { settings.discoverySource = v; persistSettings(); }, options: [['youtube','YouTube'],['itunes','Apple previews']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
+      </div>
+    </section>
+
+    <!-- Backup -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Export &amp; Import</div>
+      <div class="p-4">
+        <p class="text-body-md text-onSurfaceVariant">Backup your playlists and settings to a single file, or restore them from an existing backup.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" class="m3-button-base tonal-button h-10 px-5 text-base" @click="exportBackup()"><span class="button-content">Export Backup</span></button>
+          <label class="m3-button-base tonal-button h-10 cursor-pointer px-5 text-base"><span class="button-content">Import Backup</span><input type="file" accept="application/json" class="sr-only" @change="importBackup($event)" /></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">About</div>
+      <div class="p-4 text-body-md text-onSurfaceVariant">Adi Music is a free, open-source music player. Your files and playlists stay in this browser.
+        <a class="link text-primary" href="https://github.com/adidotzip/music" rel="noopener noreferrer" target="_blank">Source code</a></div>
+    </section>
+  </div>
+</div>

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /components/
+Disallow: /library/
+Disallow: /discovery
+Disallow: /settings
+Disallow: /player

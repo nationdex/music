@@ -1,0 +1,68 @@
+<main class="mx-auto flex w-full max-w-[var(--app-max-content-width)] grow flex-col px-4 pb-32 sm:pl-4" x-data="discoveryView()">
+  <div class="pointer-events-none absolute top-0 left-0 flex h-16 items-center gap-2 pl-2">
+    <button type="button" class="pointer-events-auto m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Back" @click="goBack()">
+      <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-backArrow"></use></svg></div>
+    </button>
+    <h1 class="text-title-lg">Discovery</h1>
+  </div>
+
+  <form class="@container sticky top-2 z-1 mt-2 mb-6 ml-auto flex w-full max-w-125 items-center gap-1 rounded-full border border-primary/10 bg-surfaceContainerHighest px-2.5" @submit.prevent="search(query)">
+    <input type="search" x-model="query" placeholder="Search tracks, artists, albums" aria-label="Search tracks, artists, albums" autocomplete="off"
+           class="h-11 min-w-0 grow bg-transparent px-3 text-body-md text-onSurface placeholder:text-onSurface/60 focus:outline-none" />
+    <button type="submit" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Search">
+      <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-magnify"></use></svg></div>
+    </button>
+    <div class="h-6 w-px shrink-0 bg-outlineVariant"></div>
+    <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="More options" @click="openDiscoveryMenu($event)">
+      <div class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-moreVertical"></use></svg></div>
+    </button>
+  </form>
+
+  <div class="mt-16 sm:mt-0"></div>
+
+  <div x-show="loading" class="my-auto flex min-h-60 flex-col items-center justify-center gap-4 text-center opacity-70">
+    <div class="size-10 animate-spin rounded-full border-4 border-primary/30 border-t-primary"></div>
+    <div class="text-title-md">Searching catalog...</div>
+  </div>
+
+  <div x-show="!loading && error" class="my-auto flex flex-col items-center p-8 text-center text-error"><div class="text-title-lg" x-text="error"></div></div>
+
+  <div x-show="!loading && !error && results.length === 0" class="relative m-auto flex flex-col items-center py-12 text-center">
+    <svg class="my-auto size-35 fill-current opacity-54" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-magnify"></use></svg>
+    <div class="text-body-lg">No results found</div>
+  </div>
+
+  <div x-show="!loading && !error && results.length > 0" class="flex flex-col gap-8 pb-8">
+    <section class="flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <h2 class="text-title-lg font-bold text-onSurface" x-text="title"></h2>
+        <span class="text-body-sm text-onSurfaceVariant/70" x-text="results.length + ' songs'"></span>
+      </div>
+      <p class="text-body-sm text-onSurfaceVariant" x-text="source === 'youtube' ? 'Full tracks from YouTube' : '30-second Apple previews'"></p>
+      <div class="flex flex-col">
+        <template x-for="(item, i) in results" :key="item.id || i">
+          <div class="track-item-container interactable group h-18 shrink-0 rounded-lg text-left text-onSurfaceVariant" role="button" tabindex="0" @click="play(item)" @keydown.enter="play(item)">
+            <div class="grid size-full items-center gap-x-3 pr-2 pl-4" style="grid-template-columns: minmax(0,1fr) auto">
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="relative size-12 shrink-0 overflow-hidden rounded bg-secondaryContainer text-onSecondaryContainer">
+                  <template x-if="item.artwork"><img :src="item.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
+                  <div x-show="isItemPlaying(item)" class="absolute inset-0 flex items-center justify-center bg-scrim/50 text-primary"><svg class="size-5 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-volumeHigh"></use></svg></div>
+                </div>
+                <div class="min-w-0">
+                  <div class="truncate text-title-sm" :class="isItemPlaying(item) ? 'text-primary' : 'text-onSurface'" x-text="item.name"></div>
+                  <div class="truncate text-body-sm" x-text="item.artist"></div>
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-1">
+                <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" :aria-label="isSaved(item) ? 'In your library' : 'Add to library'" :disabled="isSaved(item)" @click.stop="save(item)">
+                  <div class="button-content"><svg class="pointer-events-none shrink-0 size-6 fill-current" role="presentation" viewBox="0 0 24 24"><use :href="isSaved(item) ? '#system-icon-check' : '#system-icon-plus'"></use></svg></div>
+                </button>
+                <span class="w-12 shrink-0 text-right text-body-md tabular-nums" x-text="formatTime(item.duration)"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+  </div>
+</main>

@@ -1,0 +1,31 @@
+[Unit]
+Description=Adi Music - static site + Alpine.js player, served by nginx
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Documents/adimusic
+EnvironmentFile=%h/Documents/adimusic/deploy/adimusic.env
+ExecStartPre=/bin/sh deploy/prepare.sh
+ExecStart=/usr/sbin/nginx -p %h/Documents/adimusic/ -c deploy/nginx.conf -e run/error.log -g "daemon off;"
+ExecReload=/usr/sbin/nginx -p %h/Documents/adimusic/ -c deploy/nginx.conf -e run/error.log -s reload
+Restart=on-failure
+RestartSec=2
+
+# --- operational ---
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=adimusic
+
+# --- hardening (user-unit safe) ---
+# This runs as a *user* unit: the user systemd manager cannot change the
+# capability bounding set, so those options are deliberately omitted.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=default.target
