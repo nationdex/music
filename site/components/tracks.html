@@ -21,7 +21,7 @@
     <p class="text-body-md text-onSurfaceVariant">Start by adding some music</p>
     <label class="m3-button-base filled-button mt-3 h-10 cursor-pointer px-6 text-base">
       <span class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-plus"></use></svg><span>Import tracks</span></span>
-      <input type="file" multiple accept="audio/*" class="sr-only" @change="importFiles($event.target.files); $event.target.value = ''" />
+      <input type="file" multiple accept="audio/*,.zip,application/zip" class="sr-only" @change="importFiles($event.target.files); $event.target.value = ''" />
     </label>
   </div>
 

@@ -1,37 +1,30 @@
 <!doctype html>
-<html lang="en" class="dark" un-cloak>
+<html lang="en" class="dark">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <title>Adi Music</title>
-    <meta name="description" content="Play your local music in the browser with playlists, equalizer, playback speed, and offline listening. No uploads, no sign-up." />
-    <meta name="robots" content="noindex, nofollow" />
-    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#271816" media="(prefers-color-scheme: dark)" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="icon" type="image/png" sizes="64x64" href="/images/logo-64.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
-    <meta name="application-name" content="Adi Music" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Adi Music" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="msapplication-TileColor" content="#271816" />
-    <meta name="msapplication-tap-highlight" content="no" />
-    <link rel="preload" href="/fonts/MPLUSRounded1c-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="preload" href="/assets/vendor/unocss-reset.css" as="style" />
-    <link rel="stylesheet" href="/assets/app.css" />
-    <!-- UnoCSS runtime: generates the utility CSS in the browser (no build step). Order matters: config, preset, core. -->
-    <script src="/assets/uno.config.js"></script>
-    <script src="/assets/vendor/unocss-preset-wind4.js"></script>
-    <script src="/assets/vendor/unocss-runtime-core.js"></script>
-    <noscript><style>[un-cloak] { display: block; }</style></noscript>
-    <script type="module" src="/assets/js/app.js"></script>
-    <script defer src="/assets/vendor/alpine-persist.min.js"></script>
-    <script defer src="/assets/vendor/alpine-anchor.min.js"></script>
-    <script defer src="/assets/vendor/alpine-focus.min.js"></script>
-    <script defer src="/assets/vendor/alpine.min.js"></script>
+    <!--# set var="seo_title" value="Adi Music" -->
+    <!--# set var="seo_description" value="Your library, playlists and queue. Everything stays on this device." -->
+    <!--# set var="seo_path" value="/library/tracks" -->
+    <!--# set var="seo_robots" value="noindex, nofollow" -->
+    <!--# include virtual="/partials/seo.html" -->
+    <!--# include virtual="/partials/head.html" -->
+    <!-- The entry imports these; preloading them lets the browser fetch the whole graph at once instead of one level at a time. -->
+    <link rel="modulepreload" href="/assets/js/config.js" />
+    <link rel="modulepreload" href="/assets/js/db.js" />
+    <link rel="modulepreload" href="/assets/js/eq.js" />
+    <link rel="modulepreload" href="/assets/js/lyrics.js" />
+    <link rel="modulepreload" href="/assets/js/palette.js" />
+    <link rel="modulepreload" href="/assets/js/presence.js" />
+    <link rel="modulepreload" href="/assets/js/pwa.js" />
+    <link rel="modulepreload" href="/assets/js/router.js" />
+    <link rel="modulepreload" href="/assets/js/sources.js" />
+    <link rel="modulepreload" href="/assets/js/tags.js" />
+    <link rel="modulepreload" href="/assets/js/util.js" />
+    <link rel="modulepreload" href="/assets/js/zip.js" />
+    <script type="module" src="/assets/js/app.js?v=<!--# echo var="asset_v" -->"></script>
+    <script defer src="/assets/vendor/alpine-persist.min.js?v=<!--# echo var="asset_v" -->"></script>
+    <script defer src="/assets/vendor/alpine-anchor.min.js?v=<!--# echo var="asset_v" -->"></script>
+    <script defer src="/assets/vendor/alpine-focus.min.js?v=<!--# echo var="asset_v" -->"></script>
+    <script defer src="/assets/vendor/alpine.min.js?v=<!--# echo var="asset_v" -->"></script>
   </head>
 
   <body x-data="playerApp()" x-init="boot()" @keydown.window="onKey($event)" @dragover.window.prevent="dragging = true" @dragleave.window="dragging = false" @drop.window.prevent="onDrop($event)">
@@ -191,33 +184,73 @@
   </div>
 
   <!-- Dialogs (native <dialog>: focus trap + Esc come for free) -->
-  <dialog id="dlg-equalizer" class="m3-dialog" style="--dialog-width: 44rem" x-effect="syncDialog($el, 'equalizer')" @close="onDialogClose('equalizer')" @click="if ($event.target === $el) closeDialog()">
-    <form method="dialog" class="contents">
-      <header class="flex items-center justify-between px-6 py-6"><div class="text-headline-sm">Equalizer</div>
-        <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Close" @click="closeDialog()"><div class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-close"></use></svg></div></button>
+  <dialog id="dlg-equalizer" class="m3-dialog" style="--dialog-width: 46rem" x-effect="syncDialog($el, 'equalizer')" @close="onDialogClose('equalizer')" @click="if ($event.target === $el) closeDialog()">
+    <form method="dialog" class="contents" @submit.prevent>
+      <header class="flex items-center justify-between gap-3 px-6 py-5">
+        <div class="text-headline-sm">Equalizer</div>
+        <div class="flex items-center gap-3">
+          <button type="button" role="switch" class="m3-switch" :class="eq.enabled ? 'checked' : ''" :aria-checked="eq.enabled" aria-label="Equalizer on" @click="toggleEq()">
+            <span class="hover"></span>
+            <span class="handle"><span class="icon unchecked-icon"></span><span class="icon checked-icon"><svg class="size-3 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-check"></use></svg></span></span>
+          </button>
+          <button type="button" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full" aria-label="Close" @click="closeDialog()"><div class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-close"></use></svg></div></button>
+        </div>
       </header>
       <div class="flex flex-col text-onSurfaceVariant">
-        <div class="mb-2 flex gap-2 overflow-x-auto px-6 pb-4">
-          <template x-for="name in Object.keys(EQ_PRESETS)" :key="name">
-            <button type="button" class="m3-button-base h-8 shrink-0 px-4 text-label-lg" :class="selectedEqPreset === name ? 'tonal-button' : 'outlined-button'" @click="applyEqPreset(name)"><span class="button-content" x-text="name"></span></button>
+        <p x-show="ytMode" x-cloak class="mx-6 mb-3 rounded-lg bg-tertiaryContainer px-3 py-2 text-body-sm text-onTertiaryContainer">YouTube tracks play inside YouTube's own player, so the equalizer cannot change them. It works on your own files and on Apple previews.</p>
+        <div class="mb-3 flex gap-2 overflow-x-auto px-6 pb-1" role="listbox" aria-label="Presets">
+          <button type="button" x-show="eq.preset === 'Custom'" class="m3-button-base tonal-button h-8 shrink-0 px-4 text-label-lg" aria-selected="true" disabled><span class="button-content">Custom</span></button>
+          <template x-for="name in eqPresetNames" :key="name">
+            <button type="button" role="option" class="m3-button-base h-8 shrink-0 px-4 text-label-lg" :aria-selected="eq.preset === name" :class="eq.preset === name ? 'tonal-button' : 'outlined-button'" @click="applyEqPreset(name)"><span class="button-content" x-text="name"></span></button>
           </template>
         </div>
-        <div class="grid gap-3 overflow-x-auto overflow-y-hidden overscroll-none px-4 pb-3" style="grid-template-columns: repeat(10, minmax(3rem, 1fr))">
-          <template x-for="(band, i) in eqBands" :key="band.freq">
-            <div class="flex flex-col items-center gap-2">
-              <span class="text-label-sm tabular-nums text-onSurface" x-text="(band.gain > 0 ? '+' : '') + band.gain + ' dB'"></span>
-              <div class="m3-slider vertical h-40" :style="{ '--f': (band.gain + 12) / 24 }">
-                <input type="range" min="-12" max="12" step="1" :value="band.gain" @input="updateEqBand(i, $event.target.value)" :aria-label="band.freq + ' gain'" />
+        <div class="relative mx-6 mb-3 h-28 overflow-hidden rounded-xl bg-surfaceContainerHighest" :class="eq.enabled ? '' : 'opacity-50'" role="img" :aria-label="'Frequency response, ' + eq.preset + ' preset'">
+          <canvas id="eq-spectrum" width="300" height="96" class="absolute inset-0 size-full text-primary"></canvas>
+          <svg viewBox="0 0 300 96" preserveAspectRatio="none" class="absolute inset-0 size-full" aria-hidden="true">
+            <g class="text-outlineVariant" stroke="currentColor" stroke-width="0.6" vector-effect="non-scaling-stroke">
+              <line x1="0" x2="300" y1="48" y2="48" /><line x1="0" x2="300" y1="24" y2="24" stroke-dasharray="3 4" /><line x1="0" x2="300" y1="72" y2="72" stroke-dasharray="3 4" />
+            </g>
+            <path :d="eqCurve" fill="none" stroke="currentColor" class="text-primary" stroke-width="2.2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+          <span class="absolute top-1 left-2 text-label-sm opacity-70">+12 dB</span>
+          <span class="absolute bottom-1 left-2 text-label-sm opacity-70">-12 dB</span>
+          <span class="absolute right-2 bottom-1 text-label-sm opacity-70">20 kHz</span>
+        </div>
+        <div class="grid gap-2 overflow-x-auto overflow-y-hidden overscroll-none px-4 pb-2" :class="eq.enabled ? '' : 'opacity-50'" style="grid-template-columns: repeat(10, minmax(2.75rem, 1fr))">
+          <template x-for="(label, i) in EQ_LABELS" :key="label">
+            <div class="flex flex-col items-center gap-2" @dblclick="updateEqBand(i, 0)" title="Double-click to reset this band">
+              <span class="text-label-sm tabular-nums text-onSurface" x-text="(eq.gains[i] > 0 ? '+' : '') + eq.gains[i] + ' dB'"></span>
+              <div class="m3-slider vertical h-36" :style="{ '--f': (eq.gains[i] + EQ_RANGE) / (2 * EQ_RANGE) }">
+                <input type="range" :min="-EQ_RANGE" :max="EQ_RANGE" step="1" :value="eq.gains[i]" @input="updateEqBand(i, $event.target.value)" :aria-label="label + ' gain'" />
                 <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
               </div>
-              <span class="text-label-sm tabular-nums" x-text="band.freq"></span>
+              <span class="text-label-sm tabular-nums" x-text="label"></span>
             </div>
           </template>
         </div>
+        <div class="mx-6 mt-2 flex items-center gap-3" :class="eq.enabled ? '' : 'opacity-50'">
+          <span class="w-16 shrink-0 text-label-lg">Preamp</span>
+          <div class="m3-slider min-w-0 flex-1" :class="eq.auto ? 'is-disabled' : ''" :style="{ '--f': (eqPreamp + EQ_RANGE) / (2 * EQ_RANGE) }">
+            <input type="range" :min="-EQ_RANGE" :max="EQ_RANGE" step="0.5" :value="eqPreamp" :disabled="eq.auto" @input="setEqPreamp($event.target.value)" aria-label="Preamp" />
+            <div class="m3-slider-track"><div class="m3-slider-active"></div><div class="m3-slider-inactive"></div><div class="m3-slider-thumb"></div></div>
+          </div>
+          <span class="w-16 shrink-0 text-right text-label-sm tabular-nums" x-text="(eqPreamp > 0 ? '+' : '') + eqPreamp.toFixed(1) + ' dB'"></span>
+          <button type="button" class="m3-button-base h-8 shrink-0 px-3 text-label-lg" :class="eq.auto ? 'tonal-button' : 'outlined-button'" :aria-pressed="eq.auto" title="Lower the level by the largest boost, so loud presets do not distort" @click="toggleEqAuto()"><span class="button-content">Auto</span></button>
+        </div>
       </div>
-      <footer class="flex items-center justify-between px-6 pt-3 pb-6">
-        <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="applyEqPreset('Flat')"><span class="button-content">Reset</span></button>
-        <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="closeDialog()"><span class="button-content">Close</span></button>
+      <footer class="flex flex-wrap items-center justify-between gap-2 px-6 pt-4 pb-6">
+        <div class="flex items-center gap-1">
+          <button type="button" class="m3-button-base text-button h-10 px-4 text-base" @click="resetEq()"><span class="button-content">Reset</span></button>
+          <button type="button" class="m3-button-base text-button h-10 px-4 text-base" x-show="!eqNaming" @click="eqNaming = true; $nextTick(() => $refs.eqName.focus())"><span class="button-content">Save preset</span></button>
+          <button type="button" class="m3-button-base text-button h-10 px-4 text-base" x-show="eqIsCustomPreset" x-cloak @click="deleteEqPreset()"><span class="button-content">Delete preset</span></button>
+        </div>
+        <!-- A div, not a form: forms cannot nest, and this sits inside the dialog's form. -->
+        <div class="flex items-center gap-2" x-show="eqNaming" x-cloak>
+          <input type="text" x-ref="eqName" x-model="eqCustomName" maxlength="24" placeholder="Preset name" aria-label="Preset name" @keydown.enter.prevent="saveEqPreset()" class="h-10 w-40 rounded-lg border border-outline bg-transparent px-3 text-body-md text-onSurface placeholder:text-onSurface/50 focus:outline-none" />
+          <button type="button" class="m3-button-base tonal-button h-10 px-4 text-base" :disabled="!eqCustomName.trim()" @click="saveEqPreset()"><span class="button-content">Save</span></button>
+          <button type="button" class="m3-button-base text-button h-10 px-3 text-base" @click="eqNaming = false"><span class="button-content">Cancel</span></button>
+        </div>
+        <button type="button" class="m3-button-base text-button h-10 px-4 text-base" x-show="!eqNaming" @click="closeDialog()"><span class="button-content">Close</span></button>
       </footer>
     </form>
   </dialog>

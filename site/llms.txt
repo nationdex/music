@@ -1,0 +1,12 @@
+# Adi Music
+
+> A free, open-source music player for the browser. Play your own audio files with synced lyrics, a 10-band equalizer, playlists and offline listening. Files stay on the user's device; there are no accounts.
+
+## Pages
+
+- [Home](<!--# echo var="public_url" -->/): what Adi Music does, how to start, FAQ
+- [Privacy](<!--# echo var="public_url" -->/privacy): what is stored and which requests the app makes
+
+## Source
+
+- [GitHub](https://github.com/nationdex/music): code, issues, Android and iOS app

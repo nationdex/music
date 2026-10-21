@@ -10,7 +10,13 @@ import 'palette.dart';
 const fontFamily = 'MPlusRounded1c';
 
 TextStyle _style(double size, double line, double spacing, FontWeight weight) =>
-    TextStyle(fontFamily: fontFamily, fontSize: size, height: line / size, letterSpacing: spacing, fontWeight: weight);
+    TextStyle(
+      fontFamily: fontFamily,
+      fontSize: size,
+      height: line / size,
+      letterSpacing: spacing,
+      fontWeight: weight,
+    );
 
 /// Type scale from the web build, in logical pixels.
 final TextTheme adiTextTheme = TextTheme(
@@ -38,7 +44,10 @@ const _buttonPadding = EdgeInsets.symmetric(horizontal: 24);
 
 ThemeData buildTheme(Brightness brightness, {Color? accent}) {
   final scheme = buildColorScheme(brightness, accent: accent);
-  final text = adiTextTheme.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+  final text = adiTextTheme.apply(
+    bodyColor: scheme.onSurface,
+    displayColor: scheme.onSurface,
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -71,13 +80,17 @@ ThemeData buildTheme(Brightness brightness, {Color? accent}) {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       titleTextStyle: text.titleLarge,
-      contentTextStyle: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+      contentTextStyle: text.bodyMedium?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: scheme.surfaceContainerHigh,
       surfaceTintColor: Colors.transparent,
       showDragHandle: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
     ),
     popupMenuTheme: PopupMenuThemeData(
       color: scheme.surfaceContainerHigh,
@@ -88,7 +101,9 @@ ThemeData buildTheme(Brightness brightness, {Color? accent}) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: scheme.inverseSurface,
-      contentTextStyle: text.bodyMedium?.copyWith(color: scheme.onInverseSurface),
+      contentTextStyle: text.bodyMedium?.copyWith(
+        color: scheme.onInverseSurface,
+      ),
       actionTextColor: scheme.inversePrimary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
@@ -98,7 +113,11 @@ ThemeData buildTheme(Brightness brightness, {Color? accent}) {
       indicatorColor: scheme.secondaryContainer,
       labelTextStyle: WidgetStatePropertyAll(text.labelMedium),
       iconTheme: WidgetStateProperty.resolveWith(
-        (s) => IconThemeData(color: s.contains(WidgetState.selected) ? scheme.onSecondaryContainer : scheme.onSurfaceVariant),
+        (s) => IconThemeData(
+          color: s.contains(WidgetState.selected)
+              ? scheme.onSecondaryContainer
+              : scheme.onSurfaceVariant,
+        ),
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
@@ -133,14 +152,22 @@ ThemeData buildTheme(Brightness brightness, {Color? accent}) {
         textStyle: text.labelLarge,
       ),
     ),
-    iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(minimumSize: const Size(44, 44))),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+    ),
     listTileTheme: ListTileThemeData(
       iconColor: scheme.onSurfaceVariant,
       textColor: scheme.onSurface,
       titleTextStyle: text.titleSmall,
-      subtitleTextStyle: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      subtitleTextStyle: text.bodySmall?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
     ),
-    dividerTheme: DividerThemeData(color: scheme.outlineVariant.withValues(alpha: 0.5), space: 1, thickness: 1),
+    dividerTheme: DividerThemeData(
+      color: scheme.outlineVariant.withValues(alpha: 0.5),
+      space: 1,
+      thickness: 1,
+    ),
     sliderTheme: SliderThemeData(
       // ignore: deprecated_member_use
       year2023: false,

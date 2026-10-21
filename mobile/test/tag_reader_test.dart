@@ -17,7 +17,10 @@ void main() {
     expect(t.trackNo, 3);
     expect(t.duration, closeTo(1.0, 0.2));
     expect(t.picture, isNotNull);
-    expect(t.picture!.take(2), [0xFF, 0xD8], reason: 'cover is re-encoded as JPEG');
+    expect(t.picture!.take(2), [
+      0xFF,
+      0xD8,
+    ], reason: 'cover is re-encoded as JPEG');
   });
 
   test('reads MP4 atoms from an M4A', () async {
@@ -38,22 +41,37 @@ void main() {
   });
 
   test('a file without tags yields empty tags instead of throwing', () async {
-    final tmp = File('${Directory.systemTemp.createTempSync().path}/junk.mp3')..writeAsBytesSync(List.filled(64, 0));
+    final tmp = File('${Directory.systemTemp.createTempSync().path}/junk.mp3')
+      ..writeAsBytesSync(List.filled(64, 0));
     final t = await readTags(tmp.path);
     expect(t.title, isNull);
   });
 
   test('shrinkArtwork caps the longest edge at 512 px', () {
-    final big = Uint8List.fromList(img.encodePng(img.Image(width: 1200, height: 800)));
+    final big = Uint8List.fromList(
+      img.encodePng(img.Image(width: 1200, height: 800)),
+    );
     final out = img.decodeJpg(shrinkArtwork(big)!)!;
     expect(out.width, 512);
     expect(out.height, closeTo(341, 1));
 
-    final tall = Uint8List.fromList(img.encodePng(img.Image(width: 300, height: 900)));
+    final tall = Uint8List.fromList(
+      img.encodePng(img.Image(width: 300, height: 900)),
+    );
     expect(img.decodeJpg(shrinkArtwork(tall)!)!.height, 512);
 
-    final small = Uint8List.fromList(img.encodePng(img.Image(width: 200, height: 100)));
-    expect(img.decodeJpg(shrinkArtwork(small)!)!.width, 200, reason: 'small covers are not upscaled');
-    expect(shrinkArtwork(File('test/fixtures/tagged.mp3').readAsBytesSync()), isNull, reason: 'not an image');
+    final small = Uint8List.fromList(
+      img.encodePng(img.Image(width: 200, height: 100)),
+    );
+    expect(
+      img.decodeJpg(shrinkArtwork(small)!)!.width,
+      200,
+      reason: 'small covers are not upscaled',
+    );
+    expect(
+      shrinkArtwork(File('test/fixtures/tagged.mp3').readAsBytesSync()),
+      isNull,
+      reason: 'not an image',
+    );
   });
 }

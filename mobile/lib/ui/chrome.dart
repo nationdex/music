@@ -25,7 +25,8 @@ class ChromeInsets extends InheritedWidget {
 
   final double bottom;
 
-  static double bottomOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ChromeInsets>()?.bottom ?? 0;
+  static double bottomOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ChromeInsets>()?.bottom ?? 0;
 
   @override
   bool updateShouldNotify(ChromeInsets old) => old.bottom != bottom;
@@ -45,14 +46,18 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   AppTab _tab = AppTab.tracks;
-  final _navigators = {for (final t in AppTab.values) t: GlobalKey<NavigatorState>()};
+  final _navigators = {
+    for (final t in AppTab.values) t: GlobalKey<NavigatorState>(),
+  };
 
   Widget _root(AppTab tab) => switch (tab) {
     AppTab.home => const HomePage(),
     AppTab.tracks => const TracksPage(),
     AppTab.albums => const CollectionListPage(kind: CollectionKind.albums),
     AppTab.artists => const CollectionListPage(kind: CollectionKind.artists),
-    AppTab.playlists => const CollectionListPage(kind: CollectionKind.playlists),
+    AppTab.playlists => const CollectionListPage(
+      kind: CollectionKind.playlists,
+    ),
     AppTab.discovery => const DiscoveryPage(),
   };
 
@@ -88,34 +93,52 @@ class _AppShellState extends State<AppShell> {
         for (final tab in AppTab.values)
           Navigator(
             key: _navigators[tab],
-            onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => _root(tab)),
+            onGenerateRoute: (_) =>
+                MaterialPageRoute<void>(builder: (_) => _root(tab)),
           ),
       ],
     );
 
-    final inset = _miniPlayerHeight + _miniPlayerMargin * 2 + (wide ? 0 : _navBarHeight) + safeBottom;
+    final inset =
+        _miniPlayerHeight +
+        _miniPlayerMargin * 2 +
+        (wide ? 0 : _navBarHeight) +
+        safeBottom;
 
     final Widget content = TabSelector(
       select: _select,
       child: ChromeInsets(
         bottom: inset,
         child: Stack(
-        children: [
-          Positioned.fill(child: stack),
-          Positioned(
-            left: wide ? 12 : 0,
-            right: wide ? 12 : 0,
-            bottom: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Padding(padding: EdgeInsets.fromLTRB(12, _miniPlayerMargin, 12, _miniPlayerMargin), child: MiniPlayer()),
-                if (!wide) _BottomNavigation(tabs: phoneTabs, selected: _tab, onSelected: _select),
-                if (wide) SizedBox(height: safeBottom),
-              ],
+          children: [
+            Positioned.fill(child: stack),
+            Positioned(
+              left: wide ? 12 : 0,
+              right: wide ? 12 : 0,
+              bottom: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      12,
+                      _miniPlayerMargin,
+                      12,
+                      _miniPlayerMargin,
+                    ),
+                    child: MiniPlayer(),
+                  ),
+                  if (!wide)
+                    _BottomNavigation(
+                      tabs: phoneTabs,
+                      selected: _tab,
+                      onSelected: _select,
+                    ),
+                  if (wide) SizedBox(height: safeBottom),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -134,7 +157,12 @@ class _AppShellState extends State<AppShell> {
                       selectedIndex: _tab.index,
                       onDestinationSelected: (i) => _select(AppTab.values[i]),
                       destinations: [
-                        for (final t in AppTab.values) NavigationRailDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selectedIcon), label: Text(t.label)),
+                        for (final t in AppTab.values)
+                          NavigationRailDestination(
+                            icon: Icon(t.icon),
+                            selectedIcon: Icon(t.selectedIcon),
+                            label: Text(t.label),
+                          ),
                       ],
                     ),
                   ),
@@ -148,7 +176,11 @@ class _AppShellState extends State<AppShell> {
 }
 
 class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation({required this.tabs, required this.selected, required this.onSelected});
+  const _BottomNavigation({
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
+  });
 
   final List<AppTab> tabs;
   final AppTab selected;
@@ -163,7 +195,12 @@ class _BottomNavigation extends StatelessWidget {
       final scheme = Theme.of(context).colorScheme;
       final text = Theme.of(context).textTheme;
       return Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.paddingOf(context).bottom + 8),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.paddingOf(context).bottom + 8,
+        ),
         child: SizedBox(
           height: _navBarHeight - 16,
           child: GlassSurface(
@@ -183,18 +220,34 @@ class _BottomNavigation extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: i == index ? scheme.secondaryContainer.withValues(alpha: 0.85) : Colors.transparent,
+                            color: i == index
+                                ? scheme.secondaryContainer.withValues(
+                                    alpha: 0.85,
+                                  )
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(26),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(i == index ? tabs[i].selectedIcon : tabs[i].icon, size: 24, color: i == index ? scheme.onSecondaryContainer : scheme.onSurfaceVariant),
+                              Icon(
+                                i == index
+                                    ? tabs[i].selectedIcon
+                                    : tabs[i].icon,
+                                size: 24,
+                                color: i == index
+                                    ? scheme.onSecondaryContainer
+                                    : scheme.onSurfaceVariant,
+                              ),
                               Text(
                                 tabs[i].label,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: text.labelSmall?.copyWith(color: i == index ? scheme.onSecondaryContainer : scheme.onSurfaceVariant),
+                                style: text.labelSmall?.copyWith(
+                                  color: i == index
+                                      ? scheme.onSecondaryContainer
+                                      : scheme.onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
@@ -213,7 +266,14 @@ class _BottomNavigation extends StatelessWidget {
       height: _navBarHeight,
       selectedIndex: index,
       onDestinationSelected: (i) => onSelected(tabs[i]),
-      destinations: [for (final t in tabs) NavigationDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selectedIcon), label: t.label)],
+      destinations: [
+        for (final t in tabs)
+          NavigationDestination(
+            icon: Icon(t.icon),
+            selectedIcon: Icon(t.selectedIcon),
+            label: t.label,
+          ),
+      ],
     );
   }
 }
@@ -247,13 +307,35 @@ class MiniPlayer extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: track == null
-                            ? Text('Nothing playing', style: text.bodyMedium?.copyWith(color: scheme.onSecondaryContainer.withValues(alpha: 0.7)))
+                            ? Text(
+                                'Nothing playing',
+                                style: text.bodyMedium?.copyWith(
+                                  color: scheme.onSecondaryContainer.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
+                              )
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.titleSmall?.copyWith(color: scheme.onSecondaryContainer)),
-                                  Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: scheme.onSecondaryContainer.withValues(alpha: 0.75))),
+                                  Text(
+                                    track.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: text.titleSmall?.copyWith(
+                                      color: scheme.onSecondaryContainer,
+                                    ),
+                                  ),
+                                  Text(
+                                    track.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: text.bodySmall?.copyWith(
+                                      color: scheme.onSecondaryContainer
+                                          .withValues(alpha: 0.75),
+                                    ),
+                                  ),
                                 ],
                               ),
                       ),
@@ -261,12 +343,30 @@ class MiniPlayer extends StatelessWidget {
                         tooltip: player.isPlaying ? 'Pause' : 'Play',
                         iconSize: 30,
                         icon: player.isLoading && track != null
-                            ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: scheme.onSecondaryContainer))
-                            : Icon(player.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: scheme.onSecondaryContainer,
+                                ),
+                              )
+                            : Icon(
+                                player.isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                              ),
                         color: scheme.onSecondaryContainer,
                         onPressed: player.togglePlay,
                       ),
-                      IconButton(tooltip: 'Next', icon: const Icon(Icons.skip_next_rounded), color: scheme.onSecondaryContainer, onPressed: player.currentTrack == null ? null : player.nextTrack),
+                      IconButton(
+                        tooltip: 'Next',
+                        icon: const Icon(Icons.skip_next_rounded),
+                        color: scheme.onSecondaryContainer,
+                        onPressed: player.currentTrack == null
+                            ? null
+                            : player.nextTrack,
+                      ),
                     ],
                   ),
                 ),
@@ -282,8 +382,13 @@ class MiniPlayer extends StatelessWidget {
                   valueListenable: player.duration,
                   builder: (_, duration, _) => LinearProgressIndicator(
                     minHeight: 3,
-                    value: duration.inMilliseconds == 0 ? 0 : (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0),
-                    backgroundColor: scheme.onSecondaryContainer.withValues(alpha: 0.12),
+                    value: duration.inMilliseconds == 0
+                        ? 0
+                        : (position.inMilliseconds / duration.inMilliseconds)
+                              .clamp(0.0, 1.0),
+                    backgroundColor: scheme.onSecondaryContainer.withValues(
+                      alpha: 0.12,
+                    ),
                     color: scheme.primary,
                   ),
                 ),
@@ -313,7 +418,21 @@ class YoutubeHost extends StatelessWidget {
           valueListenable: player.youtubeController,
           builder: (_, controller, _) => controller == null
               ? const SizedBox.shrink()
-              : Positioned(left: 0, bottom: 0, width: 2, height: 2, child: IgnorePointer(child: Opacity(opacity: 0.01, child: YoutubePlayer(controller: controller, aspectRatio: 1)))),
+              : Positioned(
+                  left: 0,
+                  bottom: 0,
+                  width: 2,
+                  height: 2,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.01,
+                      child: YoutubePlayer(
+                        controller: controller,
+                        aspectRatio: 1,
+                      ),
+                    ),
+                  ),
+                ),
         ),
       ],
     );
@@ -322,7 +441,11 @@ class YoutubeHost extends StatelessWidget {
 
 /// Listens for one-off messages from the player (errors) and shows them as snackbars.
 class MessageListener extends StatefulWidget {
-  const MessageListener({super.key, required this.child, required this.messengerKey});
+  const MessageListener({
+    super.key,
+    required this.child,
+    required this.messengerKey,
+  });
 
   final Widget child;
   final GlobalKey<ScaffoldMessengerState> messengerKey;
@@ -364,6 +487,7 @@ class _MessageListenerState extends State<MessageListener> {
 }
 
 /// Convenience for pages: bottom padding that clears the floating chrome.
-EdgeInsets listPadding(BuildContext context, {double top = 0}) => EdgeInsets.only(top: top, bottom: ChromeInsets.bottomOf(context) + 12);
+EdgeInsets listPadding(BuildContext context, {double top = 0}) =>
+    EdgeInsets.only(top: top, bottom: ChromeInsets.bottomOf(context) + 12);
 
 String trackCountLabel(int n) => plural(n, 'track');

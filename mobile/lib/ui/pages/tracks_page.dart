@@ -59,32 +59,62 @@ class _TracksPageState extends State<TracksPage> {
                   tooltip: 'Open sort menu',
                   actionsBuilder: (_) => [
                     for (final (key, label) in sortKeys)
-                      MenuAction(icon: lib.sortKey == key ? Icons.check_rounded : Icons.sort_rounded, label: label, onSelected: () => lib.setSortKey(key)),
+                      MenuAction(
+                        icon: lib.sortKey == key
+                            ? Icons.check_rounded
+                            : Icons.sort_rounded,
+                        label: label,
+                        onSelected: () => lib.setSortKey(key),
+                      ),
                   ],
                 ),
                 IconButton(
                   tooltip: lib.sortAsc ? 'Sort descending' : 'Sort ascending',
-                  icon: AnimatedRotation(turns: lib.sortAsc ? 0 : 0.5, duration: const Duration(milliseconds: 200), child: const Icon(Icons.arrow_upward_rounded)),
+                  icon: AnimatedRotation(
+                    turns: lib.sortAsc ? 0 : 0.5,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.arrow_upward_rounded),
+                  ),
                   onPressed: lib.toggleSortDirection,
                 ),
-                ActionMenuButton(actionsBuilder: (ctx) => libraryMenuActions(ctx, onImport: _import, onDiscover: () => TabSelector.of(context)(AppTab.discovery))),
+                ActionMenuButton(
+                  actionsBuilder: (ctx) => libraryMenuActions(
+                    ctx,
+                    onImport: _import,
+                    onDiscover: () => TabSelector.of(context)(AppTab.discovery),
+                  ),
+                ),
               ],
             ),
-            if (lib.importStatus != null) LinearProgressIndicator(minHeight: 2, color: scheme.primary),
+            if (lib.importStatus != null)
+              LinearProgressIndicator(minHeight: 2, color: scheme.primary),
             Expanded(
               child: lib.tracks.isEmpty
                   ? EmptyState(
                       title: 'Your library is empty',
                       message: 'Start by adding some music',
-                      actions: [FilledButton.icon(icon: const Icon(Icons.add_rounded), label: const Text('Import tracks'), onPressed: _import)],
+                      actions: [
+                        FilledButton.icon(
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Import tracks'),
+                          onPressed: _import,
+                        ),
+                      ],
                     )
                   : tracks.isEmpty
-                  ? const EmptyState(title: 'No tracks found', message: 'Try a different search')
+                  ? const EmptyState(
+                      title: 'No tracks found',
+                      message: 'Try a different search',
+                    )
                   : ListView.builder(
                       padding: listPadding(context),
                       itemExtent: 72,
                       itemCount: tracks.length,
-                      itemBuilder: (_, i) => TrackTile(track: tracks[i], showAlbum: wide, onTap: () => player.playFromList(tracks, i)),
+                      itemBuilder: (_, i) => TrackTile(
+                        track: tracks[i],
+                        showAlbum: wide,
+                        onTap: () => player.playFromList(tracks, i),
+                      ),
                     ),
             ),
           ],

@@ -9,7 +9,7 @@ M PLUS Rounded 1c, the type scale), same features, native playback.
 cd mobile
 flutter pub get
 flutter run                                   # a device or emulator
-flutter test                                  # 73 tests
+flutter test                                  # 111 tests
 flutter analyze
 flutter build apk                             # Android
 flutter build ios                             # iOS (macOS with Xcode only)
@@ -22,8 +22,11 @@ must not ship inside an app. Set it in Settings > Discovery, or at build time:
 flutter run --dart-define=ADI_SERVER_URL=https://music.example.com
 ```
 
-Without a server, Discovery uses 30-second Apple previews. Lyrics providers and iTunes are
-keyless, so the app calls them directly.
+Without a server, or when the server's YouTube quota is spent, the app searches YouTube through
+Innertube (the API youtube.com itself uses; no key, no quota) directly. Apple previews are the
+last fallback. Lyrics providers and iTunes are keyless, so the app calls them directly.
+When YouTube refuses to embed a video (errors 100, 101, 150) the player tries another upload
+of the same song before skipping.
 
 ## Web to Flutter
 
@@ -38,6 +41,14 @@ keyless, so the app calls them directly.
 | `lyrics.js`, `palette.js`, `sources.js` | `lib/services/`, `lib/core/palette.dart` (same algorithms, ported line by line) |
 | Router + `components/*.html` | `lib/ui/` pages, a navigator per tab |
 | `app.css` tokens, UnoCSS | `lib/core/theme.dart`, `palette.dart` |
+
+## Importing ZIPs
+
+Pick a `.zip` and the app imports its audio files, skipping covers, notes and macOS metadata. It reads
+the archive's index at the end of the file and then only the member being imported, streaming to disk,
+so a large archive is never loaded into memory. Every file is checked against its CRC; a damaged one is
+skipped and reported. Password-protected archives are refused with a message. Same reader as the web
+app (`site/assets/js/zip.js`), inspired by [nationdex/nzip](https://github.com/nationdex/nzip).
 
 ## Liquid Glass
 
@@ -55,11 +66,14 @@ keeps the new design.
 ## Differences from the web app
 
 - **Equalizer: Android only.** iOS does not let apps process the system player's audio.
-  Android uses the device's equalizer bands, with the 10-band presets interpolated onto them.
+  Android uses the device's equalizer bands, with the same ten-band curve, 17 presets, preamp,
+  bypass and saved presets as the web app, interpolated onto the device's bands. A negative
+  preamp (the automatic headroom) lowers the player volume; a positive one uses the loudness enhancer.
 - **Preserve pitch** can be turned off on Android only. iOS always preserves pitch.
 - **YouTube tracks** play in YouTube's iframe, so they stop when the app is backgrounded
   on some devices and have no equalizer. Local files and previews play in the background.
 - No PWA install card, keyboard shortcuts, drag and drop, or "Open with" (web-only ideas).
+- No Discord Rich Presence: Discord on a phone has no local connection for apps to use.
 - Settings gains a server URL and the glass switch.
 
 ## Not verified here

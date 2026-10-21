@@ -23,7 +23,8 @@ class TabSelector extends InheritedWidget {
 
   final ValueChanged<AppTab> select;
 
-  static ValueChanged<AppTab> of(BuildContext context) => context.getInheritedWidgetOfExactType<TabSelector>()?.select ?? (_) {};
+  static ValueChanged<AppTab> of(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TabSelector>()?.select ?? (_) {};
 
   @override
   bool updateShouldNotify(TabSelector old) => false;

@@ -1,0 +1,24 @@
+<!--
+  Per-page search and social metadata. A page sets these variables, then includes this file:
+    seo_title, seo_description, seo_path (canonical path), seo_robots, seo_image (path), seo_image_alt
+  public_url comes from ADI_PUBLIC_URL (deploy/prepare.sh).
+-->
+<title><!--# echo var="seo_title" --></title>
+<meta name="description" content="<!--# echo var="seo_description" -->" />
+<meta name="robots" content="<!--# echo var="seo_robots" default="index, follow, max-image-preview:large" -->" />
+<link rel="canonical" href="<!--# echo var="public_url" --><!--# echo var="seo_path" default="/" -->" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Adi Music" />
+<meta property="og:locale" content="en_US" />
+<meta property="og:title" content="<!--# echo var="seo_title" -->" />
+<meta property="og:description" content="<!--# echo var="seo_description" -->" />
+<meta property="og:url" content="<!--# echo var="public_url" --><!--# echo var="seo_path" default="/" -->" />
+<meta property="og:image" content="<!--# echo var="public_url" --><!--# echo var="seo_image" default="/images/og.png" -->" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="<!--# echo var="seo_image_alt" default="Adi Music: your music, organized around you." -->" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="<!--# echo var="seo_title" -->" />
+<meta name="twitter:description" content="<!--# echo var="seo_description" -->" />
+<meta name="twitter:image" content="<!--# echo var="public_url" --><!--# echo var="seo_image" default="/images/og.png" -->" />
+<meta name="twitter:image:alt" content="<!--# echo var="seo_image_alt" default="Adi Music: your music, organized around you." -->" />

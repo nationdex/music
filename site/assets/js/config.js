@@ -8,25 +8,23 @@ export const DEFAULT_SETTINGS = {
   volumeInPlayer: true,
   preservePitch: true,
   discoverySource: 'youtube', // 'youtube' (full tracks) | 'itunes' (30 s previews)
-  volume: 1
-};
-
-// --------------------------------------------------------------- equalizer
-
-export const EQ_PRESETS = {
-  Flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  'Bass Boost': [7, 6, 5, 3, 1, 0, 0, 0, 0, 0],
-  Vocal: [-2, -1, 1, 3, 4, 4, 3, 1, 0, -1],
-  Treble: [-1, -1, 0, 0, 1, 2, 4, 6, 7, 8],
-  Rock: [5, 4, 2, -1, -2, 0, 2, 4, 5, 6],
-  Electronic: [6, 5, 2, 0, -2, 2, 1, 3, 5, 6]
+  volume: 1,
+  discordRpc: false, // show what is playing on Discord (needs tools/discord-rpc running)
+  discordClientId: '' // Discord application id (discord.com/developers)
 };
 
 // ------------------------------------------------------------ upstream APIs
 // nginx proxies these prefixes (see deploy/nginx.conf); the YouTube key is
 // injected there and never reaches the browser.
 
-export const API = { adi: '/up/adi', lrclib: '/up/lrclib', lrcmux: '/up/lrcmux', itunes: '/up/itunes', youtube: '/up/youtube' };
+export const API = {
+  adi: '/up/adi',
+  lrclib: '/up/lrclib',
+  lrcmux: '/up/lrcmux',
+  itunes: '/up/itunes',
+  youtube: '/up/youtube',
+  innertube: '/up/innertube'
+};
 export const ADI_PROVIDERS = [
   'lrclib',
   'betterlyrics',

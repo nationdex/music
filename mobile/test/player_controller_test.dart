@@ -1,26 +1,48 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:adi_music/core/config.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:adi_music/data/models.dart';
 import 'package:adi_music/data/storage.dart';
+import 'package:adi_music/services/discovery_service.dart';
 import 'package:adi_music/state/library_controller.dart';
+import 'package:adi_music/state/youtube_bridge.dart';
+import 'package:http/testing.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 import 'package:adi_music/state/player_controller.dart';
 import 'package:adi_music/state/settings_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_audio_player.dart';
+import 'test_helpers.dart';
 
-Track t(String id, {String? url}) => Track(id: id, name: 'Song $id', artist: 'A', source: TrackSource.remote, stored: false, url: url, duration: 100);
+Track t(String id, {String? url}) => Track(
+  id: id,
+  name: 'Song $id',
+  artist: 'A',
+  source: TrackSource.remote,
+  stored: false,
+  url: url,
+  duration: 100,
+);
 
-Future<(PlayerController, LibraryController)> make({FakeAudioPlayer? audio}) async {
+Future<(PlayerController, LibraryController)> make({
+  FakeAudioPlayer? audio,
+}) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  final storage = Storage(root: Directory.systemTemp.createTempSync('adi_player'), prefs: await SharedPreferences.getInstance());
+  final storage = Storage(
+    root: Directory.systemTemp.createTempSync('adi_player'),
+    prefs: await SharedPreferences.getInstance(),
+  );
   final lib = LibraryController(storage);
-  final player = PlayerController(library: lib, settings: SettingsController(storage), player: audio ?? FakeAudioPlayer(), random: Random(3));
+  final player = PlayerController(
+    library: lib,
+    settings: SettingsController(storage),
+    player: audio ?? FakeAudioPlayer(),
+    random: Random(3),
+  );
   return (player, lib);
 }
 
@@ -47,21 +69,28 @@ void main() {
     expect(p.queue.first.id, 't5');
     expect(p.queuePos, 0);
     expect(p.queue.map((x) => x.id).toSet(), list.map((x) => x.id).toSet());
-    expect(p.queue.map((x) => x.id).toList(), isNot(list.map((x) => x.id).toList()), reason: 'actually shuffled');
+    expect(
+      p.queue.map((x) => x.id).toList(),
+      isNot(list.map((x) => x.id).toList()),
+      reason: 'actually shuffled',
+    );
   });
 
-  test('toggleShuffle restores the original order around the current track', () async {
-    final (p, _) = await make();
-    final list = [for (var i = 0; i < 8; i++) t('t$i')];
-    p.playFromList(list, 3);
-    p.toggleShuffle();
-    expect(p.shuffle, isTrue);
-    expect(p.queue.first.id, 't3');
-    p.toggleShuffle();
-    expect(p.shuffle, isFalse);
-    expect(p.queue.map((x) => x.id), list.map((x) => x.id));
-    expect(p.queuePos, 3);
-  });
+  test(
+    'toggleShuffle restores the original order around the current track',
+    () async {
+      final (p, _) = await make();
+      final list = [for (var i = 0; i < 8; i++) t('t$i')];
+      p.playFromList(list, 3);
+      p.toggleShuffle();
+      expect(p.shuffle, isTrue);
+      expect(p.queue.first.id, 't3');
+      p.toggleShuffle();
+      expect(p.shuffle, isFalse);
+      expect(p.queue.map((x) => x.id), list.map((x) => x.id));
+      expect(p.queuePos, 3);
+    },
+  );
 
   test('queue editing', () async {
     final (p, _) = await make();
@@ -72,7 +101,11 @@ void main() {
     expect(p.queue.last.id, 'z');
 
     p.removeFromQueue(0);
-    expect(p.queue.first.id, 'a', reason: 'the playing track cannot be removed');
+    expect(
+      p.queue.first.id,
+      'a',
+      reason: 'the playing track cannot be removed',
+    );
     p.removeFromQueue(1);
     expect(p.queue.map((x) => x.id), ['a', 'b', 'c', 'z']);
 
@@ -101,15 +134,23 @@ void main() {
     expect(p.repeat, RepeatSetting.off);
   });
 
-  test('a track whose audio is missing reports a message instead of crashing', () async {
-    final (p, _) = await make();
-    final missing = Track(id: 'gone', name: 'Gone', artist: 'A', audioFile: 'nope.mp3');
-    p.playFromList([missing], 0);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(p.isPlaying, isFalse);
-    expect(p.takeMessage(), contains('audio is missing'));
-    expect(p.takeMessage(), isNull, reason: 'messages are delivered once');
-  });
+  test(
+    'a track whose audio is missing reports a message instead of crashing',
+    () async {
+      final (p, _) = await make();
+      final missing = Track(
+        id: 'gone',
+        name: 'Gone',
+        artist: 'A',
+        audioFile: 'nope.mp3',
+      );
+      p.playFromList([missing], 0);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(p.isPlaying, isFalse);
+      expect(p.takeMessage(), contains('audio is missing'));
+      expect(p.takeMessage(), isNull, reason: 'messages are delivered once');
+    },
+  );
 
   test('removing the playing track clears the player', () async {
     final (p, lib) = await make();
@@ -131,11 +172,15 @@ void main() {
 
   group('playback flow', () {
     test('plays a remote URL, sets duration, volume and speed', () async {
-      final audio = FakeAudioPlayer()..loadedDuration = const Duration(seconds: 215);
+      final audio = FakeAudioPlayer()
+        ..loadedDuration = const Duration(seconds: 215);
       final (p, _) = await make(audio: audio);
       p.playFromList([t('a', url: 'https://x/a.m4a')], 0);
       await settle();
-      expect(audio.calls, containsAllInOrder(['url:https://x/a.m4a', 'volume:1.0', 'play']));
+      expect(
+        audio.calls,
+        containsAllInOrder(['url:https://x/a.m4a', 'volume:1.0', 'play']),
+      );
       expect(p.duration.value, const Duration(seconds: 215));
       expect(p.isPlaying, isTrue);
     });
@@ -157,30 +202,43 @@ void main() {
       expect(p.isPlaying, isFalse);
     });
 
-    test('position stream updates the notifier and the active lyric line', () async {
-      final audio = FakeAudioPlayer();
-      final (p, _) = await make(audio: audio);
-      p.playFromList([t('a', url: 'https://x/a.m4a')], 0);
-      await settle();
-      p.lyricLines = const [LyricLine(1, 'one'), LyricLine(5, 'two'), LyricLine(9, 'three')];
-      audio.pos.add(const Duration(seconds: 6));
-      await settle();
-      expect(p.position.value, const Duration(seconds: 6));
-      expect(p.activeLyricIndex.value, 1);
-      audio.pos.add(const Duration(milliseconds: 500));
-      await settle();
-      expect(p.activeLyricIndex.value, -1, reason: 'before the first line');
-    });
+    test(
+      'position stream updates the notifier and the active lyric line',
+      () async {
+        final audio = FakeAudioPlayer();
+        final (p, _) = await make(audio: audio);
+        p.playFromList([t('a', url: 'https://x/a.m4a')], 0);
+        await settle();
+        p.lyricLines = const [
+          LyricLine(1, 'one'),
+          LyricLine(5, 'two'),
+          LyricLine(9, 'three'),
+        ];
+        audio.pos.add(const Duration(seconds: 6));
+        await settle();
+        expect(p.position.value, const Duration(seconds: 6));
+        expect(p.activeLyricIndex.value, 1);
+        audio.pos.add(const Duration(milliseconds: 500));
+        await settle();
+        expect(p.activeLyricIndex.value, -1, reason: 'before the first line');
+      },
+    );
 
     test('completion advances to the next track', () async {
       final audio = FakeAudioPlayer();
       final (p, _) = await make(audio: audio);
-      p.playFromList([t('a', url: 'https://x/a.m4a'), t('b', url: 'https://x/b.m4a')], 0);
+      p.playFromList([
+        t('a', url: 'https://x/a.m4a'),
+        t('b', url: 'https://x/b.m4a'),
+      ], 0);
       await settle();
       audio.emit(playing: false, processing: ProcessingState.completed);
       await settle();
       expect(p.currentTrack!.id, 'b');
-      expect(audio.calls.where((c) => c.startsWith('url:')), ['url:https://x/a.m4a', 'url:https://x/b.m4a']);
+      expect(audio.calls.where((c) => c.startsWith('url:')), [
+        'url:https://x/a.m4a',
+        'url:https://x/b.m4a',
+      ]);
     });
 
     test('end of queue stops, repeat all wraps, repeat one restarts', () async {
@@ -195,32 +253,47 @@ void main() {
       p.cycleRepeat();
       await p.nextTrack();
       await settle();
-      expect(audio.calls.where((c) => c.startsWith('url:')).length, 2, reason: 'repeat all reloads the first track');
+      expect(
+        audio.calls.where((c) => c.startsWith('url:')).length,
+        2,
+        reason: 'repeat all reloads the first track',
+      );
 
       p.cycleRepeat();
       audio.calls.clear();
       await p.nextTrack();
       expect(audio.calls, contains('seek:0'));
-      expect(audio.calls.any((c) => c.startsWith('url:')), isFalse, reason: 'repeat one only seeks');
+      expect(
+        audio.calls.any((c) => c.startsWith('url:')),
+        isFalse,
+        reason: 'repeat one only seeks',
+      );
     });
 
-    test('previous restarts the track after 3 s, otherwise goes back', () async {
-      final audio = FakeAudioPlayer();
-      final (p, _) = await make(audio: audio);
-      p.playFromList([t('a', url: 'https://x/a.m4a'), t('b', url: 'https://x/b.m4a')], 1);
-      await settle();
-      p.position.value = const Duration(seconds: 10);
-      await p.previousTrack();
-      expect(p.currentTrack!.id, 'b');
-      expect(audio.calls, contains('seek:0'));
-      p.position.value = const Duration(seconds: 1);
-      await p.previousTrack();
-      await settle();
-      expect(p.currentTrack!.id, 'a');
-    });
+    test(
+      'previous restarts the track after 3 s, otherwise goes back',
+      () async {
+        final audio = FakeAudioPlayer();
+        final (p, _) = await make(audio: audio);
+        p.playFromList([
+          t('a', url: 'https://x/a.m4a'),
+          t('b', url: 'https://x/b.m4a'),
+        ], 1);
+        await settle();
+        p.position.value = const Duration(seconds: 10);
+        await p.previousTrack();
+        expect(p.currentTrack!.id, 'b');
+        expect(audio.calls, contains('seek:0'));
+        p.position.value = const Duration(seconds: 1);
+        await p.previousTrack();
+        await settle();
+        expect(p.currentTrack!.id, 'a');
+      },
+    );
 
     test('seek clamps to the track length', () async {
-      final audio = FakeAudioPlayer()..loadedDuration = const Duration(seconds: 100);
+      final audio = FakeAudioPlayer()
+        ..loadedDuration = const Duration(seconds: 100);
       final (p, _) = await make(audio: audio);
       p.playFromList([t('a', url: 'https://x/a.m4a')], 0);
       await settle();
@@ -264,26 +337,219 @@ void main() {
     });
   });
 
-  group('equalizer preset mapping', () {
-    final rock = eqPresets['Rock']!;
+  group('YouTube fallback', () {
+    // Stands in for the WebView-backed bridge. [behavior] decides what each upload does.
+    Future<
+      (
+        PlayerController,
+        FakeYoutube Function(),
+        LibraryController,
+        DiscoveryService,
+      )
+    >
+    makeYt(
+      void Function(String id, FakeYoutube yt) behavior, {
+      required MockClient client,
+    }) async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      SharedPreferences.setMockInitialValues({});
+      final storage = Storage(
+        root: Directory.systemTemp.createTempSync('adi_yt'),
+        prefs: await SharedPreferences.getInstance(),
+      );
+      final lib = LibraryController(storage);
+      final discovery = DiscoveryService(client: client);
+      FakeYoutube? bridge;
+      final player = PlayerController(
+        library: lib,
+        settings: SettingsController(storage),
+        player: FakeAudioPlayer(),
+        discovery: discovery,
+        random: Random(3),
+        youtubeFactory:
+            ({required onState, required onTick, required onError}) =>
+                bridge = FakeYoutube(
+                  onState: onState,
+                  onTick: onTick,
+                  onError: onError,
+                  behavior: behavior,
+                ),
+      );
+      return (player, () => bridge!, lib, discovery);
+    }
 
-    test('exact centre frequencies return the preset gain', () {
-      for (var i = 0; i < eqBandFrequencies.length; i++) {
-        expect(interpolatePreset(rock, eqBandFrequencies[i]), closeTo(rock[i], 1e-9));
-      }
+    Track ytTrack(
+      String id,
+      String name, {
+      String artist = 'Michael Jackson',
+    }) => Track(
+      id: 'yt_$id',
+      name: name,
+      artist: artist,
+      source: TrackSource.youtube,
+      stored: false,
+      videoId: id,
+      duration: 248,
+    );
+
+    final results = MockClient(
+      (_) async => jsonResponse(
+        innertubeJson([
+          (
+            'orig',
+            'Michael Jackson - Bad (Official Video)',
+            'Michael Jackson',
+            '4:08',
+          ),
+          ('topic', 'Bad', 'Michael Jackson - Topic', '4:08'),
+          ('lyrics', 'Michael Jackson - Bad (Lyrics)', 'LyricLandia', '4:10'),
+        ]),
+      ),
+    );
+
+    test(
+      'error 150: tries another upload of the same song instead of skipping',
+      () async {
+        final (p, bridge, lib, discovery) = await makeYt((id, y) {
+          if (id == 'orig') {
+            y.onError('150');
+          } else {
+            y.onState(yt.PlayerState.playing);
+          }
+        }, client: results);
+        lib.addRemoteTrack(ytTrack('orig', 'Bad'));
+        p.playFromList([
+          lib.tracks.single,
+          ytTrack('next', 'Next', artist: 'X'),
+        ], 0);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(bridge().loaded, [
+          'orig',
+          'topic',
+        ], reason: 'the Topic upload is the best match');
+        expect(
+          p.currentTrack!.name,
+          'Bad',
+          reason: 'still the same song, not skipped',
+        );
+        expect(p.currentTrack!.videoId, 'topic');
+        expect(p.isPlaying, isTrue);
+        expect(discovery.blockedVideos, contains('orig'));
+        expect(
+          lib.tracks.single.videoId,
+          'topic',
+          reason: 'the saved track keeps the working upload',
+        );
+        expect(p.takeMessage(), contains('another version'));
+      },
+    );
+
+    test(
+      'walks through several blocked uploads, then skips when none plays',
+      () async {
+        final (p, bridge, _, _) = await makeYt(
+          (id, y) => y.onError('150'),
+          client: results,
+        );
+        p.playFromList([
+          ytTrack('orig', 'Bad'),
+          ytTrack('next', 'Next', artist: 'X'),
+        ], 0);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(bridge().loaded.take(3), [
+          'orig',
+          'topic',
+          'lyrics',
+        ], reason: 'tries each distinct upload once');
+        expect(
+          bridge().loaded.where((id) => id == 'topic'),
+          hasLength(1),
+          reason: 'never loops on the same upload',
+        );
+        expect(p.currentTrack!.name, 'Next', reason: 'gives up and moves on');
+      },
+    );
+
+    test(
+      'a single-track queue stops with a clear message instead of looping',
+      () async {
+        final (p, _, _, _) = await makeYt(
+          (id, y) => y.onError('101'),
+          client: results,
+        );
+        p.playFromList([ytTrack('orig', 'Bad')], 0);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(p.isPlaying, isFalse);
+        expect(
+          p.takeMessage(),
+          anyOf(
+            contains('another version'),
+            contains('cannot be played from YouTube'),
+          ),
+        );
+      },
+    );
+
+    test('other YouTube errors are not retried with another upload', () async {
+      final (p, bridge, _, _) = await makeYt(
+        (id, y) => y.onError('5'),
+        client: results,
+      );
+      p.playFromList([ytTrack('orig', 'Bad')], 0);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(bridge().loaded, ['orig']);
+      expect(p.takeMessage(), contains('cannot be played here (5)'));
     });
 
-    test('in-between frequencies interpolate on a log axis and clamp at the ends', () {
-      final mid = interpolatePreset(rock, sqrt(32 * 64));
-      expect(mid, closeTo((rock[0] + rock[1]) / 2, 1e-9));
-      expect(interpolatePreset(rock, 20), rock.first);
-      expect(interpolatePreset(rock, 20000), rock.last);
-    });
+    test('ENDED after a pre-roll ad does not skip; a real end does', () async {
+      final (p, bridge, _, _) = await makeYt(
+        (id, y) => y.onState(yt.PlayerState.playing),
+        client: results,
+      );
+      p.playFromList([
+        ytTrack('orig', 'Bad'),
+        ytTrack('next', 'Next', artist: 'X'),
+      ], 0);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    test('presets all have ten bands', () {
-      for (final e in eqPresets.entries) {
-        expect(e.value, hasLength(10), reason: e.key);
-      }
+      p.position.value = const Duration(
+        seconds: 15,
+      ); // the ad's clock, far from the 248 s end
+      bridge().onState(yt.PlayerState.ended);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        p.currentTrack!.name,
+        'Bad',
+        reason: 'an ad ending is not the end of the song',
+      );
+
+      p.position.value = const Duration(seconds: 246);
+      bridge().onState(yt.PlayerState.ended);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(p.currentTrack!.name, 'Next');
     });
   });
+}
+
+class FakeYoutube extends YoutubeBridge {
+  FakeYoutube({
+    required super.onState,
+    required super.onTick,
+    required super.onError,
+    required this.behavior,
+  });
+
+  final void Function(String id, FakeYoutube yt) behavior;
+  final loaded = <String>[];
+
+  @override
+  Future<void> loadVideo(String videoId) async {
+    loaded.add(videoId);
+    // Report asynchronously, like the real iframe does.
+    Future<void>.delayed(
+      const Duration(milliseconds: 5),
+      () => behavior(videoId, this),
+    );
+  }
 }

@@ -13,12 +13,26 @@ void showSnack(BuildContext context, String message, {SnackBarAction? action}) {
   final messenger = ScaffoldMessenger.maybeOf(context);
   messenger
     ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message), action: action, duration: const Duration(seconds: 4)));
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: action,
+        duration: const Duration(seconds: 4),
+      ),
+    );
 }
 
 /// Cover art for a track, with the web build's music-note placeholder.
 class Artwork extends StatelessWidget {
-  const Artwork({super.key, this.track, this.size = 40, this.radius = 4, this.circle = false, this.icon = Icons.music_note_rounded, this.overlay});
+  const Artwork({
+    super.key,
+    this.track,
+    this.size = 40,
+    this.radius = 4,
+    this.circle = false,
+    this.icon = Icons.music_note_rounded,
+    this.overlay,
+  });
 
   final Track? track;
   final double size;
@@ -64,7 +78,11 @@ class Artwork extends StatelessWidget {
               image: image,
               fit: BoxFit.cover,
               gaplessPlayback: true,
-              errorBuilder: (_, _, _) => Icon(icon, size: size * 0.55, color: scheme.onSecondaryContainer),
+              errorBuilder: (_, _, _) => Icon(
+                icon,
+                size: size * 0.55,
+                color: scheme.onSecondaryContainer,
+              ),
             )
           else
             Icon(icon, size: size * 0.55, color: scheme.onSecondaryContainer),
@@ -77,7 +95,11 @@ class Artwork extends StatelessWidget {
 
 /// "Now playing" marker drawn over artwork.
 class NowPlayingOverlay extends StatelessWidget {
-  const NowPlayingOverlay({super.key, required this.playing, this.iconSize = 20});
+  const NowPlayingOverlay({
+    super.key,
+    required this.playing,
+    this.iconSize = 20,
+  });
 
   final bool playing;
   final double iconSize;
@@ -87,13 +109,23 @@ class NowPlayingOverlay extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return ColoredBox(
       color: scheme.scrim.withValues(alpha: 0.5),
-      child: Icon(playing ? Icons.volume_up_rounded : Icons.play_arrow_rounded, size: iconSize, color: scheme.primary),
+      child: Icon(
+        playing ? Icons.volume_up_rounded : Icons.play_arrow_rounded,
+        size: iconSize,
+        color: scheme.primary,
+      ),
     );
   }
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key, required this.title, this.message, this.icon, this.actions = const []});
+  const EmptyState({
+    super.key,
+    required this.title,
+    this.message,
+    this.icon,
+    this.actions = const [],
+  });
 
   final String title;
   final String? message;
@@ -112,13 +144,40 @@ class EmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 72, color: scheme.onSurface.withValues(alpha: 0.6)), const SizedBox(height: 12)],
-              Text(title, style: text.titleLarge?.copyWith(color: scheme.onPrimaryContainer), textAlign: TextAlign.center),
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 72,
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Text(
+                title,
+                style: text.titleLarge?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                ),
+                textAlign: TextAlign.center,
+              ),
               if (message != null) ...[
                 const SizedBox(height: 4),
-                Text(message!, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant), textAlign: TextAlign.center),
+                Text(
+                  message!,
+                  style: text.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ],
-              if (actions.isNotEmpty) ...[const SizedBox(height: 16), Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: actions)],
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: actions,
+                ),
+              ],
             ],
           ),
         ),
@@ -142,8 +201,21 @@ class SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (title != null) Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 4), child: Text(title!, style: text.titleSmall?.copyWith(color: scheme.onSurfaceVariant))),
-          for (var i = 0; i < children.length; i++) ...[if (i > 0 || title == null) if (i > 0) const Divider(), children[i]],
+          if (title != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                title!,
+                style: text.titleSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0 || title == null)
+              if (i > 0) const Divider(),
+            children[i],
+          ],
         ],
       ),
     );

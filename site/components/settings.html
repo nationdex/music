@@ -29,7 +29,7 @@
           <label class="interactable flex h-auto min-h-14 cursor-pointer items-center gap-2 rounded-lg border border-outline px-6 text-body-md text-onSurface">
             <svg class="size-6 shrink-0 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-plus"></use></svg>
             <span>Import tracks</span>
-            <input type="file" multiple accept="audio/*" class="sr-only" @change="importFiles($event.target.files); $event.target.value = ''" />
+            <input type="file" multiple accept="audio/*,.zip,application/zip" class="sr-only" @change="importFiles($event.target.files); $event.target.value = ''" />
           </label>
         </div>
       </div>
@@ -111,6 +111,32 @@
       </div>
     </section>
 
+    <!-- Discord -->
+    <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
+      <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Discord</div>
+      <div class="flex items-center justify-between gap-2 p-4">
+        <div class="min-w-0">
+          <div>Show what I am listening to on Discord</div>
+          <div class="text-body-sm text-onSurfaceVariant">Needs the Discord desktop app and the small bridge in <code>tools/discord-rpc</code> running on this computer.</div>
+        </div>
+        <button type="button" role="switch" class="m3-switch" :class="settings.discordRpc ? 'checked' : ''" :aria-checked="settings.discordRpc" aria-label="Show what I am listening to on Discord" @click="settings.discordRpc = !settings.discordRpc; syncPresence()">
+          <span class="hover"></span>
+          <span class="handle"><span class="icon unchecked-icon"></span><span class="icon checked-icon"><svg class="size-3 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-check"></use></svg></span></span>
+        </button>
+      </div>
+      <div class="flex flex-col gap-2 border-t border-outlineVariant/50 p-4" x-show="settings.discordRpc" x-cloak>
+        <label class="flex flex-col gap-1">
+          <span>Discord application id</span>
+          <input type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="123456789012345678" x-model.trim="settings.discordClientId" class="h-11 rounded-lg border border-outline bg-transparent px-3 text-body-md text-onSurface placeholder:text-onSurface/50 focus:outline-none" />
+          <span class="text-body-sm text-onSurfaceVariant">Create an application at discord.com/developers and paste its Application ID. Upload an art asset named <code>logo</code> under Rich Presence for tracks without cover art.</span>
+        </label>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="m3-button-base tonal-button h-10 px-5 text-base" @click="testDiscord()"><span class="button-content">Test connection</span></button>
+          <span class="text-body-sm text-onSurfaceVariant" x-text="{ off: 'Not connected', connected: 'Connected to Discord', 'no-bridge': 'Bridge not running', 'no-discord': 'Discord not running', error: 'Discord refused the update' }[discordStatus]"></span>
+        </div>
+      </div>
+    </section>
+
     <!-- Install -->
     <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
       <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Install</div>
@@ -141,7 +167,7 @@
     <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
       <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">About</div>
       <div class="p-4 text-body-md text-onSurfaceVariant">Adi Music is a free, open-source music player. Your files and playlists stay in this browser.
-        <a class="link text-primary" href="https://github.com/adidotzip/music" rel="noopener noreferrer" target="_blank">Source code</a></div>
+        <a class="link text-primary" href="https://github.com/nationdex/music" rel="noopener noreferrer" target="_blank">Source code</a></div>
     </section>
   </div>
 </div>

@@ -26,24 +26,36 @@ class HomePage extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    Widget section(String title, String subtitle, {VoidCallback? onViewAll}) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                Text(subtitle, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-              ],
-            ),
+    Widget section(String title, String subtitle, {VoidCallback? onViewAll}) =>
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onViewAll != null)
+                TextButton(onPressed: onViewAll, child: const Text('View all')),
+            ],
           ),
-          if (onViewAll != null) TextButton(onPressed: onViewAll, child: const Text('View all')),
-        ],
-      ),
-    );
+        );
 
     final recent = lib.history.take(5).toList();
     final playlists = lib.playlists.take(5).toList();
@@ -67,11 +79,20 @@ class HomePage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Library', style: text.headlineLarge),
-                          Text('Your offline music, all in one place.', style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant)),
+                          Text(
+                            'Your offline music, all in one place.',
+                            style: text.bodyLarge?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined), onPressed: () => openSettings(context)),
+                    IconButton(
+                      tooltip: 'Settings',
+                      icon: const Icon(Icons.settings_outlined),
+                      onPressed: () => openSettings(context),
+                    ),
                   ],
                 ),
               ),
@@ -83,8 +104,17 @@ class HomePage extends StatelessWidget {
                   title: 'Your library is empty',
                   message: 'Import some music or save tracks from Discovery and they will appear here.',
                   actions: [
-                    FilledButton(onPressed: () => importTracksFlow(context, pickAudioFiles), child: const Text('Import tracks')),
-                    OutlinedButton.icon(icon: const Icon(Icons.explore_outlined, size: 20), label: const Text('Discovery'), onPressed: () => TabSelector.of(context)(AppTab.discovery)),
+                    FilledButton(
+                      onPressed: () =>
+                          importTracksFlow(context, pickAudioFiles),
+                      child: const Text('Import tracks'),
+                    ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.explore_outlined, size: 20),
+                      label: const Text('Discovery'),
+                      onPressed: () =>
+                          TabSelector.of(context)(AppTab.discovery),
+                    ),
                   ],
                 ),
               )
@@ -94,23 +124,49 @@ class HomePage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Card(
                   child: recent.isEmpty
-                      ? Padding(padding: const EdgeInsets.all(24), child: Text('Nothing played yet.', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)))
+                      ? Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Nothing played yet.',
+                            style: text.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        )
                       : Column(
                           children: [
                             for (var i = 0; i < recent.length; i++)
                               ListTile(
                                 minTileHeight: 64,
                                 leading: Artwork(track: recent[i], size: 40),
-                                title: Text(recent[i].name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: Text(recent[i].artist, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                trailing: Text(formatTime(recent[i].duration), style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-                                onTap: () => player.playFromList(lib.history, i),
+                                title: Text(
+                                  recent[i].name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  recent[i].artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Text(
+                                  formatTime(recent[i].duration),
+                                  style: text.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                onTap: () =>
+                                    player.playFromList(lib.history, i),
                               ),
                           ],
                         ),
                 ),
               ),
-              section('Playlists', 'Your saved collections', onViewAll: () => TabSelector.of(context)(AppTab.playlists)),
+              section(
+                'Playlists',
+                'Your saved collections',
+                onViewAll: () => TabSelector.of(context)(AppTab.playlists),
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Card(
@@ -121,11 +177,25 @@ class HomePage extends StatelessWidget {
                         for (final pl in playlists)
                           ListTile(
                             minTileHeight: 56,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            leading: CircleAvatar(backgroundColor: scheme.surfaceContainerHighest, child: Icon(pl.isFavorites ? Icons.favorite_rounded : Icons.queue_music_rounded, color: scheme.onSurfaceVariant)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            leading: CircleAvatar(
+                              backgroundColor: scheme.surfaceContainerHighest,
+                              child: Icon(
+                                pl.isFavorites
+                                    ? Icons.favorite_rounded
+                                    : Icons.queue_music_rounded,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
                             title: Text(pl.name),
                             subtitle: Text(pl.meta),
-                            onTap: () => openCollection(context, CollectionKind.playlists, pl.id),
+                            onTap: () => openCollection(
+                              context,
+                              CollectionKind.playlists,
+                              pl.id,
+                            ),
                           ),
                       ],
                     ),
@@ -133,7 +203,11 @@ class HomePage extends StatelessWidget {
                 ),
               ),
               if (albums.isNotEmpty) ...[
-                section('Albums', 'From your library', onViewAll: () => TabSelector.of(context)(AppTab.albums)),
+                section(
+                  'Albums',
+                  'From your library',
+                  onViewAll: () => TabSelector.of(context)(AppTab.albums),
+                ),
                 _AlbumGrid(albums: albums),
               ],
             ],
@@ -160,7 +234,12 @@ class _AlbumGrid extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: columns, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.8,
+          ),
           itemCount: albums.length,
           itemBuilder: (_, i) {
             final a = albums[i];
@@ -169,18 +248,42 @@ class _AlbumGrid extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () => openCollection(context, CollectionKind.albums, a.id),
+                onTap: () =>
+                    openCollection(context, CollectionKind.albums, a.id),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: LayoutBuilder(builder: (_, box) => Artwork(track: a.artworkTrack, size: box.biggest.shortestSide, radius: 0, icon: Icons.album_rounded))),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (_, box) => Artwork(
+                          track: a.artworkTrack,
+                          size: box.biggest.shortestSide,
+                          radius: 0,
+                          icon: Icons.album_rounded,
+                        ),
+                      ),
+                    ),
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                          Text(a.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                          Text(
+                            a.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            a.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),

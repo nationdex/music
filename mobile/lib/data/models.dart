@@ -77,7 +77,8 @@ class Track {
 
   bool get isLocal => source == TrackSource.local;
   bool get isYouTube => source == TrackSource.youtube;
-  bool get hasArtwork => artworkFile != null || (artworkUrl != null && artworkUrl!.isNotEmpty);
+  bool get hasArtwork =>
+      artworkFile != null || (artworkUrl != null && artworkUrl!.isNotEmpty);
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -126,21 +127,36 @@ class Track {
 }
 
 class Playlist {
-  Playlist({required this.id, required this.name, List<String>? trackIds}) : trackIds = trackIds ?? [];
+  Playlist({required this.id, required this.name, List<String>? trackIds})
+    : trackIds = trackIds ?? [];
 
   final String id;
   String name;
   List<String> trackIds;
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'trackIds': trackIds};
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'trackIds': trackIds,
+  };
 
-  factory Playlist.fromJson(Map<String, dynamic> j) =>
-      Playlist(id: j['id'] as String, name: (j['name'] as String?) ?? 'Playlist', trackIds: (j['trackIds'] as List?)?.cast<String>());
+  factory Playlist.fromJson(Map<String, dynamic> j) => Playlist(
+    id: j['id'] as String,
+    name: (j['name'] as String?) ?? 'Playlist',
+    trackIds: (j['trackIds'] as List?)?.cast<String>(),
+  );
 }
 
 /// A derived, read-only grouping of tracks (album, artist, or playlist).
 class Collection {
-  const Collection({required this.id, required this.name, required this.tracks, this.artist = '', this.meta = '', this.isFavorites = false});
+  const Collection({
+    required this.id,
+    required this.name,
+    required this.tracks,
+    this.artist = '',
+    this.meta = '',
+    this.isFavorites = false,
+  });
 
   final String id;
   final String name;
@@ -168,7 +184,14 @@ class LyricLine {
 enum LyricsStatus { idle, loading, synced, plain, none }
 
 class LyricsRecord {
-  const LyricsRecord({this.plain, this.synced, this.ttml, this.provider, this.syncLevel, required this.source});
+  const LyricsRecord({
+    this.plain,
+    this.synced,
+    this.ttml,
+    this.provider,
+    this.syncLevel,
+    required this.source,
+  });
 
   final String? plain;
   final String? synced;
@@ -202,7 +225,8 @@ class DiscoveryItem {
   final String? videoId;
   final String? previewUrl;
 
-  String get trackId => '${source == TrackSource.youtube ? 'yt_' : 'rm_'}${videoId ?? id}';
+  String get trackId =>
+      '${source == TrackSource.youtube ? 'yt_' : 'rm_'}${videoId ?? id}';
 
   /// Transient (unsaved) track for playback.
   Track toTrack() => Track(
@@ -219,5 +243,6 @@ class DiscoveryItem {
   );
 }
 
-String albumKey(Track t) => '${t.album}\u0000${t.albumArtist.isNotEmpty ? t.albumArtist : t.artist}';
+String albumKey(Track t) =>
+    '${t.album}\u0000${t.albumArtist.isNotEmpty ? t.albumArtist : t.artist}';
 String albumId(Track t) => slugId(albumKey(t));

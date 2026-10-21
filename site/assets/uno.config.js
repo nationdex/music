@@ -72,7 +72,7 @@
   window.__unocss = {
     presets: [
       typeScale,
-      // The reset comes from unocss-reset.css (an exact copy of Tailwind v4's preflight).
+      // The reset is Tailwind v4's preflight, inlined at the top of app.css.
       () => window.__unocss_runtime.presets.presetWind4({ preflights: { reset: false } })
     ],
     theme: {

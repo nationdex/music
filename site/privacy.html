@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <!--# set var="seo_title" value="Privacy - Adi Music" -->
+    <!--# set var="seo_description" value="What Adi Music stores, which requests it makes, and what it never collects. Your library stays on your device." -->
+    <!--# set var="seo_path" value="/privacy" -->
+    <!--# include virtual="/partials/seo.html" -->
+    <!--# include virtual="/partials/head.html" -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": "<!--# echo var="public_url" -->/privacy#page",
+      "url": "<!--# echo var="public_url" -->/privacy",
+      "name": "Privacy - Adi Music",
+      "isPartOf": { "@id": "<!--# echo var="public_url" -->/#website" },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Adi Music", "item": "<!--# echo var="public_url" -->/" },
+          { "@type": "ListItem", "position": 2, "name": "Privacy", "item": "<!--# echo var="public_url" -->/privacy" }
+        ]
+      }
+    }
+    </script>
+    <script src="/assets/js/theme.js"></script>
+  </head>
+
+  <body>
+    <header class="mktg-content-width flex-row justify-start gap-2 py-4">
+      <a href="/" class="mr-auto flex items-center gap-2 text-title-sm font-medium text-onSurface xs:text-title-md">
+        <img src="/images/logo-64.png" width="24" height="24" alt="" class="size-6" />
+        Adi Music
+      </a>
+      <a href="/library/tracks" class="m3-button-base filled-button h-10 px-6 text-base"><span class="button-content">Open the player</span></a>
+    </header>
+
+    <main class="mktg-content-width mx-auto w-full max-w-3xl select-text gap-6 px-6 pt-10 pb-20 text-left">
+      <nav aria-label="Breadcrumb" class="text-body-sm text-onSurfaceVariant"><a class="link text-primary" href="/">Adi Music</a> / Privacy</nav>
+      <h1 class="text-headline-lg font-bold text-onSurface">Privacy</h1>
+      <p class="text-body-lg leading-relaxed text-onSurfaceVariant">Adi Music has no accounts, no analytics and no advertising. This page lists what it stores and which requests it makes, so you can check it against your browser's network tab.</p>
+
+      <h2 class="mt-4 text-headline-sm font-bold text-onSurface">What stays on your device</h2>
+      <ul class="flex list-disc flex-col gap-2 pl-6 text-body-md leading-relaxed text-onSurfaceVariant">
+        <li>Your audio files, their tags and cover art, in your browser's IndexedDB. Files are read locally and are never uploaded.</li>
+        <li>Settings, playlists, favorites, history and your equalizer in the browser's local storage.</li>
+        <li>A copy of the app itself, in the browser cache, so it can load offline.</li>
+      </ul>
+      <p class="text-body-md leading-relaxed text-onSurfaceVariant">Clearing site data in your browser removes all of it. The site sets no cookies.</p>
+
+      <h2 class="mt-4 text-headline-sm font-bold text-onSurface">Requests the app makes</h2>
+      <p class="text-body-md leading-relaxed text-onSurfaceVariant">These go through this site's own server, which forwards them. The services see this server's address, not yours.</p>
+      <ul class="flex list-disc flex-col gap-2 pl-6 text-body-md leading-relaxed text-onSurfaceVariant">
+        <li><strong class="text-onSurface">Lyrics.</strong> When a track plays, its title, artist, album and length are sent to Adi Lyrics, LRCLIB and LRC Mux to find lyrics.</li>
+        <li><strong class="text-onSurface">Discovery.</strong> What you type in Discovery goes to YouTube (its Data API, or YouTube's own web API as a fallback) or to Apple's iTunes Search.</li>
+      </ul>
+      <p class="text-body-md leading-relaxed text-onSurfaceVariant">These go straight from your browser:</p>
+      <ul class="flex list-disc flex-col gap-2 pl-6 text-body-md leading-relaxed text-onSurfaceVariant">
+        <li><strong class="text-onSurface">YouTube playback.</strong> Playing a YouTube track loads YouTube's player, which is governed by Google's privacy policy.</li>
+        <li><strong class="text-onSurface">Apple previews.</strong> 30-second previews load from Apple's servers.</li>
+        <li><strong class="text-onSurface">Discord (optional).</strong> If you turn on Discord presence, the page talks to a helper program on your own computer, at 127.0.0.1. Nothing else leaves your device for it.</li>
+      </ul>
+
+      <h2 class="mt-4 text-headline-sm font-bold text-onSurface">What this site's server keeps</h2>
+      <p class="text-body-md leading-relaxed text-onSurfaceVariant">Access logging is turned off. Lyrics and search answers are cached briefly so repeated requests are fast. The cache holds the public answers, not who asked.</p>
+
+      <h2 class="mt-4 text-headline-sm font-bold text-onSurface">Questions</h2>
+      <p class="text-body-md leading-relaxed text-onSurfaceVariant">Adi Music is open source. Read the code or open an issue on <a class="link text-primary" href="https://github.com/nationdex/music" rel="noopener noreferrer" target="_blank">GitHub</a>.</p>
+    </main>
+
+    <footer class="w-full border-t border-outlineVariant bg-shadow/7">
+      <div class="mktg-content-width items-center justify-between gap-4 py-8 sm:flex-row">
+        <div class="flex items-center gap-2 text-label-lg font-medium text-onSurfaceVariant">
+          <img src="/images/logo-64.png" width="24" height="24" alt="" class="size-5 opacity-60" /> Adi Music
+        </div>
+        <a href="/" class="text-body-md text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">Home</a>
+      </div>
+    </footer>
+  </body>
+</html>

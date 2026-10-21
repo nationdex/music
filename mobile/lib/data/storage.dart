@@ -44,7 +44,10 @@ class Storage {
       if (!await _libraryFile.exists()) return [];
       final raw = jsonDecode(await _libraryFile.readAsString());
       if (raw is! List) return [];
-      return [for (final row in raw) if (row is Map<String, dynamic>) Track.fromJson(row)];
+      return [
+        for (final row in raw)
+          if (row is Map<String, dynamic>) Track.fromJson(row),
+      ];
     } catch (e) {
       debugPrint('Library unreadable: $e');
       return [];
@@ -73,7 +76,10 @@ class Storage {
   Future<void> flush() => _pendingLibraryWrite;
 
   Future<void> deleteTrackFiles(Track t) async {
-    for (final f in [if (t.audioFile != null) audioFile(t.audioFile!), if (t.artworkFile != null) artworkFile(t.artworkFile!)]) {
+    for (final f in [
+      if (t.audioFile != null) audioFile(t.audioFile!),
+      if (t.artworkFile != null) artworkFile(t.artworkFile!),
+    ]) {
       try {
         if (await f.exists()) await f.delete();
       } catch (e) {
@@ -91,14 +97,17 @@ class Storage {
   AppSettings readSettings() {
     try {
       final raw = prefs.getString(_settingsKey);
-      if (raw != null) return AppSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      if (raw != null) {
+        return AppSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      }
     } catch (e) {
       debugPrint('Settings unreadable: $e');
     }
     return const AppSettings();
   }
 
-  Future<void> writeSettings(AppSettings s) => prefs.setString(_settingsKey, jsonEncode(s.toJson()));
+  Future<void> writeSettings(AppSettings s) =>
+      prefs.setString(_settingsKey, jsonEncode(s.toJson()));
 
   ({List<String> favorites, List<Playlist> playlists}) readLists() {
     try {
@@ -107,7 +116,10 @@ class Storage {
         final j = jsonDecode(raw) as Map<String, dynamic>;
         return (
           favorites: ((j['favorites'] as List?) ?? const []).cast<String>(),
-          playlists: [for (final p in (j['custom'] as List?) ?? const []) Playlist.fromJson(p as Map<String, dynamic>)],
+          playlists: [
+            for (final p in (j['custom'] as List?) ?? const [])
+              Playlist.fromJson(p as Map<String, dynamic>),
+          ],
         );
       }
     } catch (e) {
@@ -117,29 +129,40 @@ class Storage {
   }
 
   Future<void> writeLists(List<String> favorites, List<Playlist> playlists) =>
-      prefs.setString(_listsKey, jsonEncode({'favorites': favorites, 'custom': [for (final p in playlists) p.toJson()]}));
+      prefs.setString(
+        _listsKey,
+        jsonEncode({
+          'favorites': favorites,
+          'custom': [for (final p in playlists) p.toJson()],
+        }),
+      );
 
   /// History stores ids only; unsaved (Discovery) tracks keep a snapshot so they
   /// can still be replayed.
   List<Map<String, dynamic>> readHistory() {
     try {
       final raw = prefs.getString(_historyKey);
-      if (raw != null) return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+      if (raw != null) {
+        return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+      }
     } catch (e) {
       debugPrint('History unreadable: $e');
     }
     return [];
   }
 
-  Future<void> writeHistory(List<Track> history, {required int limit}) => prefs.setString(
-    _historyKey,
-    jsonEncode([
-      for (final t in history.take(limit)) {'id': t.id, if (!t.stored) 'snapshot': t.toJson()},
-    ]),
-  );
+  Future<void> writeHistory(List<Track> history, {required int limit}) =>
+      prefs.setString(
+        _historyKey,
+        jsonEncode([
+          for (final t in history.take(limit))
+            {'id': t.id, if (!t.stored) 'snapshot': t.toJson()},
+        ]),
+      );
 
   String? getString(String key) => prefs.getString(key);
   bool? getBool(String key) => prefs.getBool(key);
-  Future<void> setString(String key, String value) => prefs.setString(key, value);
+  Future<void> setString(String key, String value) =>
+      prefs.setString(key, value);
   Future<void> setBool(String key, bool value) => prefs.setBool(key, value);
 }

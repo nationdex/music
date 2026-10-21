@@ -4,24 +4,32 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/config.dart';
 import '../../core/palette.dart';
 import '../../data/models.dart';
 import '../../state/library_controller.dart';
-import '../../state/player_controller.dart';
 import 'common.dart';
 
-Future<bool> confirmDialog(BuildContext context, {required String title, required String body, required String confirmLabel}) async {
+Future<bool> confirmDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirmLabel,
+}) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(title),
       content: Text(body),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, true),
-          style: TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(ctx).colorScheme.error,
+          ),
           child: Text(confirmLabel),
         ),
       ],
@@ -32,7 +40,10 @@ Future<bool> confirmDialog(BuildContext context, {required String title, require
 
 /// Asks for a playlist name. Returns null when cancelled.
 Future<String?> promptPlaylistName(BuildContext context) {
-  return showDialog<String>(context: context, builder: (ctx) => const _NewPlaylistDialog());
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => const _NewPlaylistDialog(),
+  );
 }
 
 class _NewPlaylistDialog extends StatefulWidget {
@@ -63,11 +74,20 @@ class _NewPlaylistDialogState extends State<_NewPlaylistDialog> {
         textCapitalization: TextCapitalization.sentences,
         decoration: const InputDecoration(labelText: 'Name'),
         onChanged: (_) => setState(() {}),
-        onSubmitted: (v) => v.trim().isEmpty ? null : Navigator.pop(context, v.trim()),
+        onSubmitted: (v) =>
+            v.trim().isEmpty ? null : Navigator.pop(context, v.trim()),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        TextButton(onPressed: valid ? () => Navigator.pop(context, _controller.text.trim()) : null, child: const Text('Create')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: valid
+              ? () => Navigator.pop(context, _controller.text.trim())
+              : null,
+          child: const Text('Create'),
+        ),
       ],
     );
   }
@@ -97,15 +117,26 @@ Future<void> showAddToPlaylistSheet(BuildContext context, Track track) {
       final text = Theme.of(ctx).textTheme;
       return SafeArea(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.7),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.7,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(padding: const EdgeInsets.fromLTRB(24, 0, 24, 8), child: Text('Add to playlist', style: text.titleLarge)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Text('Add to playlist', style: text.titleLarge),
+              ),
               Flexible(
                 child: lists.isEmpty
-                    ? Padding(padding: const EdgeInsets.all(24), child: Text('No playlists yet.', style: text.bodyMedium))
+                    ? Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No playlists yet.',
+                          style: text.bodyMedium,
+                        ),
+                      )
                     : ListView(
                         shrinkWrap: true,
                         children: [
@@ -114,9 +145,14 @@ Future<void> showAddToPlaylistSheet(BuildContext context, Track track) {
                               leading: const Icon(Icons.queue_music_rounded),
                               title: Text(pl.name),
                               onTap: () {
-                                final name = lib.addTrackToPlaylist(track, pl.id);
+                                final name = lib.addTrackToPlaylist(
+                                  track,
+                                  pl.id,
+                                );
                                 Navigator.pop(ctx);
-                                if (name != null) showSnack(context, 'Added to “$name”');
+                                if (name != null) {
+                                  showSnack(context, 'Added to “$name”');
+                                }
                               },
                             ),
                         ],
@@ -146,7 +182,10 @@ Future<void> showAddToPlaylistSheet(BuildContext context, Track track) {
 
 /// Picks an accent colour from a hue grid, or by hex. Returns null when cancelled.
 Future<Color?> pickAccentColor(BuildContext context, {Color? current}) {
-  return showDialog<Color>(context: context, builder: (ctx) => _AccentDialog(current: current));
+  return showDialog<Color>(
+    context: context,
+    builder: (ctx) => _AccentDialog(current: current),
+  );
 }
 
 class _AccentDialog extends StatefulWidget {
@@ -158,10 +197,14 @@ class _AccentDialog extends StatefulWidget {
 }
 
 class _AccentDialogState extends State<_AccentDialog> {
-  late final TextEditingController _hex = TextEditingController(text: colorToHex(widget.current ?? const Color(0xFFC0000C)));
+  late final TextEditingController _hex = TextEditingController(
+    text: colorToHex(widget.current ?? const Color(0xFFC0000C)),
+  );
   late Color _picked = widget.current ?? const Color(0xFFC0000C);
 
-  static final _swatches = [for (var h = 0; h < 360; h += 30) hslToColor(h.toDouble(), 70, 46)];
+  static final _swatches = [
+    for (var h = 0; h < 360; h += 30) hslToColor(h.toDouble(), 70, 46),
+  ];
 
   @override
   void dispose() {
@@ -198,7 +241,12 @@ class _AccentDialogState extends State<_AccentDialog> {
                         decoration: BoxDecoration(
                           color: c,
                           shape: BoxShape.circle,
-                          border: Border.all(color: colorToHex(c) == colorToHex(_picked) ? scheme.onSurface : Colors.transparent, width: 3),
+                          border: Border.all(
+                            color: colorToHex(c) == colorToHex(_picked)
+                                ? scheme.onSurface
+                                : Colors.transparent,
+                            width: 3,
+                          ),
                         ),
                       ),
                     ),
@@ -210,7 +258,10 @@ class _AccentDialogState extends State<_AccentDialog> {
               controller: _hex,
               decoration: InputDecoration(
                 labelText: 'Hex color',
-                prefixIcon: Padding(padding: const EdgeInsets.all(12), child: CircleAvatar(backgroundColor: _picked)),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: CircleAvatar(backgroundColor: _picked),
+                ),
               ),
               maxLength: 7,
               onChanged: (v) {
@@ -222,105 +273,15 @@ class _AccentDialogState extends State<_AccentDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(context, _picked), child: const Text('Apply')),
-      ],
-    );
-  }
-}
-
-Future<void> showEqualizerSheet(BuildContext context) {
-  return showModalBottomSheet<void>(context: context, isScrollControlled: true, builder: (ctx) => const _EqualizerSheet());
-}
-
-class _EqualizerSheet extends StatelessWidget {
-  const _EqualizerSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final player = context.watch<PlayerController>();
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    Widget body;
-    if (!player.eqPlatformSupported) {
-      body = Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          'The equalizer is available on Android only. iOS does not let apps process the audio of the system player.',
-          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
         ),
-      );
-    } else if (!player.eqSupported) {
-      body = const Padding(padding: EdgeInsets.all(24), child: Text('This device does not provide an equalizer.'));
-    } else {
-      body = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                for (final name in eqPresets.keys)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(label: Text(name), selected: player.eqPreset == name, onSelected: (_) => player.applyEqPreset(name)),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 220,
-            child: Row(
-              children: [
-                for (var i = 0; i < player.eqBands.length; i++)
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text('${player.eqBands[i].gain > 0 ? '+' : ''}${player.eqBands[i].gain.round()}', style: text.labelSmall),
-                        Expanded(
-                          child: RotatedBox(
-                            quarterTurns: 3,
-                            child: Slider(
-                              min: player.eqMinDb,
-                              max: player.eqMaxDb,
-                              value: player.eqBands[i].gain.clamp(player.eqMinDb, player.eqMaxDb),
-                              onChanged: (v) => player.setEqBand(i, v),
-                            ),
-                          ),
-                        ),
-                        Text(player.eqBands[i].label, style: text.labelSmall),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-            child: Row(
-              children: [
-                Expanded(child: Text('Equalizer', style: text.titleLarge)),
-                if (player.eqSupported) TextButton(onPressed: () => player.applyEqPreset('Flat'), child: const Text('Reset')),
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-              ],
-            ),
-          ),
-          body,
-          const SizedBox(height: 16),
-        ],
-      ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _picked),
+          child: const Text('Apply'),
+        ),
+      ],
     );
   }
 }

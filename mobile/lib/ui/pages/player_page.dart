@@ -14,7 +14,7 @@ import '../../state/player_controller.dart';
 import '../../state/settings_controller.dart';
 import '../chrome.dart';
 import '../widgets/common.dart';
-import '../widgets/dialogs.dart';
+import '../widgets/equalizer_sheet.dart';
 import '../widgets/glass.dart';
 import '../widgets/track_widgets.dart';
 
@@ -35,7 +35,9 @@ class _PlayerPageState extends State<PlayerPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<PlayerController>();
-      if (p.lyricsStatus == LyricsStatus.idle && p.currentTrack != null) p.fetchLyrics();
+      if (p.lyricsStatus == LyricsStatus.idle && p.currentTrack != null) {
+        p.fetchLyrics();
+      }
     });
   }
 
@@ -43,14 +45,18 @@ class _PlayerPageState extends State<PlayerPage> {
     setState(() => _tab = tab);
     if (tab == PlayerTab.lyrics) {
       final p = context.read<PlayerController>();
-      if (p.lyricsStatus == LyricsStatus.idle && p.currentTrack != null) p.fetchLyrics();
+      if (p.lyricsStatus == LyricsStatus.idle && p.currentTrack != null) {
+        p.fetchLyrics();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final track = context.select<PlayerController, Track?>((p) => p.currentTrack);
+    final track = context.select<PlayerController, Track?>(
+      (p) => p.currentTrack,
+    );
     final wide = MediaQuery.sizeOf(context).width >= wideBreakpoint;
 
     return Scaffold(
@@ -67,10 +73,18 @@ class _PlayerPageState extends State<PlayerPage> {
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
                           child: Card(
-                            color: scheme.surfaceContainer.withValues(alpha: 0.9),
+                            color: scheme.surfaceContainer.withValues(
+                              alpha: 0.9,
+                            ),
                             child: Column(
                               children: [
-                                Padding(padding: const EdgeInsets.all(12), child: _TabSwitcher(tab: _tab, onChanged: _selectTab)),
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: _TabSwitcher(
+                                    tab: _tab,
+                                    onChanged: _selectTab,
+                                  ),
+                                ),
                                 Expanded(child: _PanelFor(tab: _tab)),
                               ],
                             ),
@@ -93,8 +107,10 @@ class _PlayerPageState extends State<PlayerPage> {
                                 Expanded(
                                   child: TextButton.icon(
                                     icon: Icon(switch (t) {
-                                      PlayerTab.queue => Icons.queue_music_rounded,
-                                      PlayerTab.history => Icons.history_rounded,
+                                      PlayerTab.queue =>
+                                        Icons.queue_music_rounded,
+                                      PlayerTab.history =>
+                                        Icons.history_rounded,
                                       PlayerTab.lyrics => Icons.lyrics_outlined,
                                     }),
                                     label: Text(switch (t) {
@@ -158,7 +174,11 @@ class _SheetBodyState extends State<_SheetBody> {
             onChanged: (t) {
               setState(() => _tab = t);
               final p = context.read<PlayerController>();
-              if (t == PlayerTab.lyrics && p.lyricsStatus == LyricsStatus.idle && p.currentTrack != null) p.fetchLyrics();
+              if (t == PlayerTab.lyrics &&
+                  p.lyricsStatus == LyricsStatus.idle &&
+                  p.currentTrack != null) {
+                p.fetchLyrics();
+              }
             },
           ),
         ),
@@ -213,7 +233,11 @@ class _ArtworkWash extends StatelessWidget {
     ImageProvider? image;
     if (track != null) {
       final f = lib.artworkFileFor(track!);
-      image = f != null ? FileImage(f) : (track!.artworkUrl != null ? NetworkImage(track!.artworkUrl!) : null);
+      image = f != null
+          ? FileImage(f)
+          : (track!.artworkUrl != null
+                ? NetworkImage(track!.artworkUrl!)
+                : null);
     }
     return Stack(
       fit: StackFit.expand,
@@ -222,7 +246,18 @@ class _ArtworkWash extends StatelessWidget {
         if (image != null)
           Opacity(
             opacity: 0.35,
-            child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60, tileMode: TileMode.clamp), child: Image(image: image, fit: BoxFit.cover, gaplessPlayback: true)),
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(
+                sigmaX: 60,
+                sigmaY: 60,
+                tileMode: TileMode.clamp,
+              ),
+              child: Image(
+                image: image,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
+            ),
           ),
       ],
     );
@@ -247,9 +282,17 @@ class _NowPlaying extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
           child: Row(
             children: [
-              IconButton(tooltip: 'Back', icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32), onPressed: () => Navigator.of(context).maybePop()),
+              IconButton(
+                tooltip: 'Back',
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
               Expanded(child: Text('Player', style: text.titleLarge)),
-              IconButton(tooltip: 'Open equalizer', icon: const Icon(Icons.equalizer_rounded), onPressed: () => showEqualizerSheet(context)),
+              IconButton(
+                tooltip: 'Open equalizer',
+                icon: const Icon(Icons.equalizer_rounded),
+                onPressed: () => showEqualizerSheet(context),
+              ),
             ],
           ),
         ),
@@ -261,8 +304,22 @@ class _NowPlaying extends StatelessWidget {
                 builder: (_, c) {
                   final side = c.biggest.shortestSide.clamp(120.0, 420.0);
                   return Container(
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 32, offset: const Offset(0, 12))]),
-                    child: Artwork(track: track, size: side, radius: 24, icon: Icons.music_note_rounded),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 32,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Artwork(
+                      track: track,
+                      size: side,
+                      radius: 24,
+                      icon: Icons.music_note_rounded,
+                    ),
                   );
                 },
               ),
@@ -275,25 +332,56 @@ class _NowPlaying extends StatelessWidget {
             children: [
               Expanded(
                 child: track == null
-                    ? Text('Nothing playing', style: text.titleLarge?.copyWith(color: scheme.onSurfaceVariant))
+                    ? Text(
+                        'Nothing playing',
+                        style: text.titleLarge?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                          Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant)),
+                          Text(
+                            track.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            track.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodyLarge?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
               ),
               if (track != null)
                 IconButton(
-                  tooltip: lib.isFavorite(track) ? 'Remove from favorites' : 'Add to favorites',
-                  icon: Icon(lib.isFavorite(track) ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: lib.isFavorite(track) ? scheme.primary : scheme.onSurfaceVariant),
+                  tooltip: lib.isFavorite(track)
+                      ? 'Remove from favorites'
+                      : 'Add to favorites',
+                  icon: Icon(
+                    lib.isFavorite(track)
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: lib.isFavorite(track)
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
+                  ),
                   onPressed: () => lib.toggleFavorite(track),
                 ),
             ],
           ),
         ),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SeekBar()),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: SeekBar(),
+        ),
         const TransportControls(large: true),
         if (settings.settings.volumeInPlayer)
           Padding(
@@ -302,10 +390,21 @@ class _NowPlaying extends StatelessWidget {
               children: [
                 IconButton(
                   tooltip: 'Toggle mute',
-                  icon: Icon(player.muted || player.volume == 0 ? Icons.volume_off_rounded : (player.volume < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded)),
+                  icon: Icon(
+                    player.muted || player.volume == 0
+                        ? Icons.volume_off_rounded
+                        : (player.volume < 0.5
+                              ? Icons.volume_down_rounded
+                              : Icons.volume_up_rounded),
+                  ),
                   onPressed: player.toggleMute,
                 ),
-                Expanded(child: Slider(value: player.muted ? 0 : player.volume, onChanged: player.setVolume)),
+                Expanded(
+                  child: Slider(
+                    value: player.muted ? 0 : player.volume,
+                    onChanged: player.setVolume,
+                  ),
+                ),
               ],
             ),
           ),
@@ -316,7 +415,12 @@ class _NowPlaying extends StatelessWidget {
 }
 
 class _TrackRow extends StatelessWidget {
-  const _TrackRow({required this.track, required this.current, required this.onTap, this.trailing});
+  const _TrackRow({
+    required this.track,
+    required this.current,
+    required this.onTap,
+    this.trailing,
+  });
 
   final Track track;
   final bool current;
@@ -329,8 +433,17 @@ class _TrackRow extends StatelessWidget {
     return ListTile(
       minTileHeight: 64,
       leading: Artwork(track: track, size: 44),
-      title: Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: current ? scheme.primary : null)),
-      subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        track.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: current ? scheme.primary : null),
+      ),
+      subtitle: Text(
+        track.artist,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       trailing: trailing,
       onTap: onTap,
     );
@@ -344,7 +457,10 @@ class _QueuePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final player = context.watch<PlayerController>();
     if (player.queue.isEmpty) {
-      return const EmptyState(title: 'Your queue is empty', icon: Icons.queue_music_rounded);
+      return const EmptyState(
+        title: 'Your queue is empty',
+        icon: Icons.queue_music_rounded,
+      );
     }
     final text = Theme.of(context).textTheme;
     return ListView.builder(
@@ -359,7 +475,13 @@ class _QueuePanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(formatTime(t.duration), style: text.bodyMedium),
-              IconButton(tooltip: 'Remove from queue', icon: const Icon(Icons.close_rounded), onPressed: i == player.queuePos ? null : () => player.removeFromQueue(i)),
+              IconButton(
+                tooltip: 'Remove from queue',
+                icon: const Icon(Icons.close_rounded),
+                onPressed: i == player.queuePos
+                    ? null
+                    : () => player.removeFromQueue(i),
+              ),
             ],
           ),
         );
@@ -375,10 +497,19 @@ class _HistoryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final lib = context.watch<LibraryController>();
     final player = context.read<PlayerController>();
-    if (lib.history.isEmpty) return const EmptyState(title: 'Nothing played yet', icon: Icons.history_rounded);
+    if (lib.history.isEmpty) {
+      return const EmptyState(
+        title: 'Nothing played yet',
+        icon: Icons.history_rounded,
+      );
+    }
     return ListView.builder(
       itemCount: lib.history.length,
-      itemBuilder: (_, i) => _TrackRow(track: lib.history[i], current: player.isCurrent(lib.history[i]), onTap: () => player.playFromList(lib.history, i)),
+      itemBuilder: (_, i) => _TrackRow(
+        track: lib.history[i],
+        current: player.isCurrent(lib.history[i]),
+        onTap: () => player.playFromList(lib.history, i),
+      ),
     );
   }
 }
@@ -412,7 +543,12 @@ class _LyricsPanelState extends State<_LyricsPanel> {
     final ctx = _keys[i].currentContext;
     if (ctx == null) return;
     final reduced = context.read<SettingsController>().reducedMotion(context);
-    Scrollable.ensureVisible(ctx, alignment: 0.4, duration: reduced ? Duration.zero : const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.4,
+      duration: reduced ? Duration.zero : const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -421,17 +557,33 @@ class _LyricsPanelState extends State<_LyricsPanel> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    if (player.currentTrack == null) return const EmptyState(title: 'Play a track to see its lyrics', icon: Icons.lyrics_outlined);
+    if (player.currentTrack == null) {
+      return const EmptyState(
+        title: 'Play a track to see its lyrics',
+        icon: Icons.lyrics_outlined,
+      );
+    }
     switch (player.lyricsStatus) {
       case LyricsStatus.idle:
       case LyricsStatus.loading:
         return const Center(child: CircularProgressIndicator());
       case LyricsStatus.none:
-        return const EmptyState(title: 'No lyrics found for this track', icon: Icons.lyrics_outlined);
+        return const EmptyState(
+          title: 'No lyrics found for this track',
+          icon: Icons.lyrics_outlined,
+        );
       case LyricsStatus.plain:
-        return SingleChildScrollView(padding: const EdgeInsets.all(24), child: Text(player.lyricsContent, style: text.bodyLarge?.copyWith(height: 1.7)));
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            player.lyricsContent,
+            style: text.bodyLarge?.copyWith(height: 1.7),
+          ),
+        );
       case LyricsStatus.synced:
-        if (_keys.length != player.lyricLines.length) _keys = List.generate(player.lyricLines.length, (_) => GlobalKey());
+        if (_keys.length != player.lyricLines.length) {
+          _keys = List.generate(player.lyricLines.length, (_) => GlobalKey());
+        }
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
           child: ValueListenableBuilder<int>(
@@ -445,13 +597,22 @@ class _LyricsPanelState extends State<_LyricsPanel> {
                     borderRadius: BorderRadius.circular(8),
                     onTap: () => player.seekToLine(player.lyricLines[i]),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
+                      ),
                       child: AnimatedOpacity(
                         duration: const Duration(milliseconds: 250),
                         opacity: i == active ? 1 : 0.4,
                         child: Text(
-                          player.lyricLines[i].text.isEmpty ? '·' : player.lyricLines[i].text,
-                          style: text.headlineSmall?.copyWith(color: i == active ? scheme.onSurface : scheme.onSurfaceVariant),
+                          player.lyricLines[i].text.isEmpty
+                              ? '·'
+                              : player.lyricLines[i].text,
+                          style: text.headlineSmall?.copyWith(
+                            color: i == active
+                                ? scheme.onSurface
+                                : scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ),

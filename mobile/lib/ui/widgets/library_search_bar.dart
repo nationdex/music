@@ -4,7 +4,15 @@ library;
 import 'package:flutter/material.dart';
 
 class LibrarySearchBar extends StatelessWidget {
-  const LibrarySearchBar({super.key, required this.controller, required this.hint, required this.onChanged, this.actions = const [], this.onSubmitted, this.radius = 16});
+  const LibrarySearchBar({
+    super.key,
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+    this.actions = const [],
+    this.onSubmitted,
+    this.radius = 16,
+  });
 
   final TextEditingController controller;
   final String hint;
@@ -38,11 +46,16 @@ class LibrarySearchBar extends StatelessWidget {
               style: text.bodyMedium,
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: text.bodyMedium?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6)),
+                hintStyle: text.bodyMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 14,
+                ),
                 prefixIcon: null,
               ),
             ),

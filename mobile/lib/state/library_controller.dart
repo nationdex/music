@@ -17,6 +17,7 @@ import '../data/models.dart';
 import '../data/settings.dart';
 import '../data/storage.dart';
 import '../services/tag_reader.dart';
+import '../services/zip_reader.dart';
 
 /// A file chosen by the user (file picker, share sheet, "Open with").
 class ImportSource {
@@ -27,7 +28,10 @@ class ImportSource {
 
 typedef DurationProbe = Future<double?> Function(String path);
 
-final _audioExt = RegExp(r'\.(mp3|m4a|m4b|aac|flac|ogg|oga|opus|wav|webm|mp4|aif|aiff|ape)$', caseSensitive: false);
+final _audioExt = RegExp(
+  r'\.(mp3|m4a|m4b|aac|flac|ogg|oga|opus|wav|webm|mp4|aif|aiff|ape)$',
+  caseSensitive: false,
+);
 
 Future<double?> _probeWithPlayer(String path) async {
   final player = AudioPlayer();
@@ -41,10 +45,27 @@ Future<double?> _probeWithPlayer(String path) async {
   }
 }
 
+class _ImportJob {
+  const _ImportJob({
+    required this.name,
+    required this.key,
+    required this.write,
+  });
+
+  final String name;
+  final String key;
+
+  /// Puts the audio at [dest]: a copy for a plain file, an extraction for a ZIP member.
+  final Future<void> Function(File dest) write;
+}
+
 class LibraryController extends ChangeNotifier {
-  LibraryController(this._storage, {DurationProbe? probeDuration, Random? random})
-    : _probe = probeDuration ?? _probeWithPlayer,
-      _random = random ?? Random();
+  LibraryController(
+    this._storage, {
+    DurationProbe? probeDuration,
+    Random? random,
+  }) : _probe = probeDuration ?? _probeWithPlayer,
+       _random = random ?? Random();
 
   final Storage _storage;
   final DurationProbe _probe;
@@ -88,7 +109,9 @@ class LibraryController extends ChangeNotifier {
     history = [];
     for (final h in _storage.readHistory()) {
       final snapshot = h['snapshot'];
-      final track = _byId(h['id'] as String?) ?? (snapshot is Map<String, dynamic> ? Track.fromJson(snapshot) : null);
+      final track =
+          _byId(h['id'] as String?) ??
+          (snapshot is Map<String, dynamic> ? Track.fromJson(snapshot) : null);
       if (track != null) history.add(track);
     }
     sortKey = _storage.getString('adimusic:sortKey') ?? 'name';
@@ -106,8 +129,10 @@ class LibraryController extends ChangeNotifier {
 
   Track? trackById(String id) => _byId(id);
 
-  File? audioFileFor(Track t) => t.audioFile == null ? null : _storage.audioFile(t.audioFile!);
-  File? artworkFileFor(Track t) => t.artworkFile == null ? null : _storage.artworkFile(t.artworkFile!);
+  File? audioFileFor(Track t) =>
+      t.audioFile == null ? null : _storage.audioFile(t.audioFile!);
+  File? artworkFileFor(Track t) =>
+      t.artworkFile == null ? null : _storage.artworkFile(t.artworkFile!);
 
   Future<void> _saveTracks() => _storage.writeLibrary(tracks);
 
@@ -120,31 +145,77 @@ class LibraryController extends ChangeNotifier {
 
   // ----------------------------------------------------------------- import
 
-  /// Copies each audio file into app storage, reads its tags and cover, and adds it.
-  /// Returns the tracks that were added (already-imported files are skipped).
-  Future<List<Track>> importFiles(List<ImportSource> files) async {
-    final audio = files.where((f) => _audioExt.hasMatch(f.name)).toList();
-    final added = <Track>[];
-    if (audio.isEmpty) return added;
+  /// Things that went wrong in the last [importFiles] (damaged ZIP members, unreadable archives).
+  List<String> importProblems = [];
 
-    for (var i = 0; i < audio.length; i++) {
-      final f = audio[i];
-      importStatus = 'Importing ${i + 1} of ${audio.length}…';
+  /// Turns what the user picked into import jobs. A `.zip` becomes one job per audio member; a
+  /// member is only extracted when its turn comes (see zip_reader.dart).
+  Future<List<_ImportJob>> _jobsFor(List<ImportSource> files) async {
+    final jobs = <_ImportJob>[];
+    for (final f in files) {
+      if (isZipPath(f.name)) {
+        try {
+          final zip = await ZipArchive.open(File(f.path));
+          final stat = await File(f.path).stat();
+          for (final e in zip.audioEntries) {
+            jobs.add(
+              _ImportJob(
+                name: e.baseName,
+                key:
+                    '${f.name}!${e.name}:${e.size}:${stat.modified.millisecondsSinceEpoch}',
+                write: (dest) => zip.extractTo(e, dest),
+              ),
+            );
+          }
+        } on ZipException catch (e) {
+          importProblems.add('Could not read “${f.name}”: ${e.message}');
+        }
+      } else if (_audioExt.hasMatch(f.name)) {
+        final src = File(f.path);
+        final stat = await src.stat();
+        jobs.add(
+          _ImportJob(
+            name: f.name,
+            key:
+                '${f.name}:${stat.size}:${stat.modified.millisecondsSinceEpoch}',
+            write: (dest) async {
+              await src.copy(dest.path);
+            },
+          ),
+        );
+      }
+    }
+    return jobs;
+  }
+
+  /// Copies each audio file into app storage (extracting ZIP members as it goes), reads its tags
+  /// and cover, and adds it. Returns the tracks that were added; already-imported files are skipped.
+  Future<List<Track>> importFiles(List<ImportSource> files) async {
+    importProblems = [];
+    final added = <Track>[];
+    final jobs = await _jobsFor(files);
+    if (jobs.isEmpty) return added;
+
+    for (var i = 0; i < jobs.length; i++) {
+      final job = jobs[i];
+      importStatus = 'Importing ${i + 1} of ${jobs.length}…';
       notifyListeners();
 
-      final src = File(f.path);
-      final stat = await src.stat();
-      final fileKey = '${f.name}:${stat.size}:${stat.modified.millisecondsSinceEpoch}';
+      final fileKey = job.key;
       if (tracks.any((t) => t.fileKey == fileKey)) continue;
 
-      final id = 't_${_random.nextInt(1 << 32).toRadixString(36)}${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
-      final ext = p.extension(f.name).toLowerCase();
+      final id =
+          't_${_random.nextInt(1 << 32).toRadixString(36)}${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
+      final ext = p.extension(job.name).toLowerCase();
       final audioName = '$id$ext';
       final dest = _storage.audioFile(audioName);
       try {
-        await src.copy(dest.path);
+        await job.write(dest);
+      } on ZipException catch (e) {
+        importProblems.add('Skipped “${job.name}”: ${e.message}');
+        continue;
       } catch (e) {
-        debugPrint('Could not copy ${f.name}: $e');
+        debugPrint('Could not copy ${job.name}: $e');
         importStatus = null;
         notifyListeners();
         throw const FileSystemException('Storage is full or unavailable');
@@ -163,9 +234,14 @@ class LibraryController extends ChangeNotifier {
       final track = Track(
         id: id,
         fileKey: fileKey,
-        name: tags.title ?? p.basenameWithoutExtension(f.name),
+        name: tags.title ?? p.basenameWithoutExtension(job.name),
         artist: artist.isEmpty ? 'Unknown artist' : artist,
-        artists: artist.isEmpty ? ['Unknown artist'] : artist.split(RegExp(r'\s*[,&;]\s*')).where((s) => s.isNotEmpty).toList(),
+        artists: artist.isEmpty
+            ? ['Unknown artist']
+            : artist
+                  .split(RegExp(r'\s*[,&;]\s*'))
+                  .where((s) => s.isNotEmpty)
+                  .toList(),
         albumArtist: tags.albumArtist ?? '',
         album: tags.album ?? 'Unknown album',
         year: tags.year ?? '',
@@ -232,7 +308,10 @@ class LibraryController extends ChangeNotifier {
   // ------------------------------------------------------- history / favorites
 
   void addToHistory(Track track) {
-    history = [track, ...history.where((t) => t.id != track.id)].take(AppConfig.historyLimit).toList();
+    history = [
+      track,
+      ...history.where((t) => t.id != track.id),
+    ].take(AppConfig.historyLimit).toList();
     _saveLists();
     _changed();
   }
@@ -308,9 +387,15 @@ class LibraryController extends ChangeNotifier {
 
   /// Tracks matching [query] (name, artist or album), sorted by the current sort key.
   List<Track> tracksMatching(String query) {
-    final list = tracks.where((t) => _matches(query, '${t.name} ${t.artist} ${t.album}')).toList();
+    final list = tracks
+        .where((t) => _matches(query, '${t.name} ${t.artist} ${t.album}'))
+        .toList();
     final dir = sortAsc ? 1 : -1;
-    list.sort((a, b) => Comparable.compare(_sortValue(a, sortKey), _sortValue(b, sortKey)) * dir);
+    list.sort(
+      (a, b) =>
+          Comparable.compare(_sortValue(a, sortKey), _sortValue(b, sortKey)) *
+          dir,
+    );
     return list;
   }
 
@@ -334,15 +419,25 @@ class LibraryController extends ChangeNotifier {
       for (final e in albumMap.entries)
         () {
           int order(Track t) => t.trackNo == 0 ? 999 : t.trackNo;
-          final list = e.value..sort((x, y) => order(x) != order(y) ? order(x) - order(y) : x.name.compareTo(y.name));
+          final list = e.value
+            ..sort(
+              (x, y) => order(x) != order(y)
+                  ? order(x) - order(y)
+                  : x.name.compareTo(y.name),
+            );
           final first = albumInfo[e.key]!;
-          final year = list.map((t) => t.year).firstWhere((y) => y.isNotEmpty, orElse: () => '');
+          final year = list
+              .map((t) => t.year)
+              .firstWhere((y) => y.isNotEmpty, orElse: () => '');
           return Collection(
             id: albumId(first),
             name: first.album,
-            artist: first.albumArtist.isNotEmpty ? first.albumArtist : first.artist,
+            artist: first.albumArtist.isNotEmpty
+                ? first.albumArtist
+                : first.artist,
             tracks: list,
-            meta: '${year.isNotEmpty ? '$year • ' : ''}${plural(list.length, 'track')}',
+            meta:
+                '${year.isNotEmpty ? '$year • ' : ''}${plural(list.length, 'track')}',
           );
         }(),
     ];
@@ -355,7 +450,8 @@ class LibraryController extends ChangeNotifier {
             id: slugId(e.key),
             name: e.key,
             tracks: e.value,
-            meta: '${plural(albums.length, 'album')} • ${plural(e.value.length, 'track')}',
+            meta:
+                '${plural(albums.length, 'album')} • ${plural(e.value.length, 'track')}',
           );
         }(),
     ];
@@ -375,60 +471,88 @@ class LibraryController extends ChangeNotifier {
 
   List<Collection> get playlists {
     List<Track> resolve(List<String> ids) => ids.map(_byId).nonNulls.toList();
-    Collection mk(String id, String name, List<String> ids, {bool favorites = false}) {
+    Collection mk(
+      String id,
+      String name,
+      List<String> ids, {
+      bool favorites = false,
+    }) {
       final list = resolve(ids);
-      return Collection(id: id, name: name, tracks: list, meta: plural(list.length, 'track'), isFavorites: favorites);
+      return Collection(
+        id: id,
+        name: name,
+        tracks: list,
+        meta: plural(list.length, 'track'),
+        isFavorites: favorites,
+      );
     }
 
-    return [mk('favorites', 'Favorites', favoriteIds, favorites: true), for (final pl in customPlaylists) mk(pl.id, pl.name, pl.trackIds)];
+    return [
+      mk('favorites', 'Favorites', favoriteIds, favorites: true),
+      for (final pl in customPlaylists) mk(pl.id, pl.name, pl.trackIds),
+    ];
   }
 
-  List<Collection> albumsMatching(String query) => albums.where((a) => _matches(query, '${a.name} ${a.artist}')).toList();
-  List<Collection> artistsMatching(String query) => artists.where((a) => _matches(query, a.name)).toList();
-  List<Collection> playlistsMatching(String query) => playlists.where((pl) => _matches(query, pl.name)).toList();
+  List<Collection> albumsMatching(String query) =>
+      albums.where((a) => _matches(query, '${a.name} ${a.artist}')).toList();
+  List<Collection> artistsMatching(String query) =>
+      artists.where((a) => _matches(query, a.name)).toList();
+  List<Collection> playlistsMatching(String query) =>
+      playlists.where((pl) => _matches(query, pl.name)).toList();
 
   Collection? album(String id) => albums.where((a) => a.id == id).firstOrNull;
   Collection? artist(String id) => artists.where((a) => a.id == id).firstOrNull;
-  Collection? playlist(String id) => playlists.where((pl) => pl.id == id).firstOrNull;
+  Collection? playlist(String id) =>
+      playlists.where((pl) => pl.id == id).firstOrNull;
 
   // ------------------------------------------------------------------ backup
 
   /// Settings, favourites, playlists and the saved Discovery tracks. Imported
   /// audio files are not included (the same as the web build).
-  String exportBackup(AppSettings settings) => const JsonEncoder.withIndent('  ').convert({
-    'version': 2,
-    'exportedAt': DateTime.now().toUtc().toIso8601String(),
-    'settings': settings.toJson(),
-    'favorites': favoriteIds,
-    'playlists': [for (final pl in customPlaylists) pl.toJson()],
-    'remoteTracks': [
-      for (final t in tracks.where((t) => t.source != TrackSource.local))
-        {
-          'id': t.id,
-          'name': t.name,
-          'artist': t.artist,
-          'album': t.album,
-          'artwork': t.artworkUrl,
-          'duration': t.duration,
-          'source': t.source.name,
-          'videoId': t.videoId,
-          'url': t.url,
-        },
-    ],
-  });
+  String exportBackup(AppSettings settings) =>
+      const JsonEncoder.withIndent('  ').convert({
+        'version': 2,
+        'exportedAt': DateTime.now().toUtc().toIso8601String(),
+        'settings': settings.toJson(),
+        'favorites': favoriteIds,
+        'playlists': [for (final pl in customPlaylists) pl.toJson()],
+        'remoteTracks': [
+          for (final t in tracks.where((t) => t.source != TrackSource.local))
+            {
+              'id': t.id,
+              'name': t.name,
+              'artist': t.artist,
+              'album': t.album,
+              'artwork': t.artworkUrl,
+              'duration': t.duration,
+              'source': t.source.name,
+              'videoId': t.videoId,
+              'url': t.url,
+            },
+        ],
+      });
 
   /// Returns the restored settings, or null when [json] is not a valid backup.
   AppSettings? importBackup(String json) {
     try {
       final data = jsonDecode(json) as Map<String, dynamic>;
-      final settings = data['settings'] is Map<String, dynamic> ? AppSettings.fromJson(data['settings'] as Map<String, dynamic>) : null;
-      if (data['favorites'] is List) favoriteIds = (data['favorites'] as List).cast<String>();
+      final settings = data['settings'] is Map<String, dynamic>
+          ? AppSettings.fromJson(data['settings'] as Map<String, dynamic>)
+          : null;
+      if (data['favorites'] is List) {
+        favoriteIds = (data['favorites'] as List).cast<String>();
+      }
       if (data['playlists'] is List) {
         customPlaylists
           ..clear()
-          ..addAll([for (final x in data['playlists'] as List) Playlist.fromJson(x as Map<String, dynamic>)]);
+          ..addAll([
+            for (final x in data['playlists'] as List)
+              Playlist.fromJson(x as Map<String, dynamic>),
+          ]);
       }
-      for (final t in (data['remoteTracks'] as List? ?? const []).cast<Map<String, dynamic>>()) {
+      for (final t
+          in (data['remoteTracks'] as List? ?? const [])
+              .cast<Map<String, dynamic>>()) {
         addRemoteTrack(Track.fromJson(t));
       }
       _saveLists();

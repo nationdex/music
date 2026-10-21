@@ -15,7 +15,14 @@ import 'ui/chrome.dart';
 import 'ui/widgets/glass.dart';
 
 class AdiMusicApp extends StatefulWidget {
-  const AdiMusicApp({super.key, required this.settings, required this.library, required this.player, required this.glassTier, this.discovery});
+  const AdiMusicApp({
+    super.key,
+    required this.settings,
+    required this.library,
+    required this.player,
+    required this.glassTier,
+    this.discovery,
+  });
 
   final SettingsController settings;
   final LibraryController library;
@@ -29,13 +36,16 @@ class AdiMusicApp extends StatefulWidget {
 
 class _AdiMusicAppState extends State<AdiMusicApp> {
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
-  late final DiscoveryService _discovery = widget.discovery ?? DiscoveryService();
+  late final DiscoveryService _discovery =
+      widget.discovery ?? DiscoveryService();
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<SettingsController>.value(value: widget.settings),
+        ChangeNotifierProvider<SettingsController>.value(
+          value: widget.settings,
+        ),
         ChangeNotifierProvider<LibraryController>.value(value: widget.library),
         ChangeNotifierProvider<PlayerController>.value(value: widget.player),
         Provider<DiscoveryService>.value(value: _discovery),
@@ -50,7 +60,9 @@ class _AdiMusicAppState extends State<AdiMusicApp> {
             theme: buildTheme(Brightness.light, accent: accent),
             darkTheme: buildTheme(Brightness.dark, accent: accent),
             themeMode: settings.themeMode,
-            themeAnimationDuration: settings.settings.motion == 'reduced' ? Duration.zero : const Duration(milliseconds: 300),
+            themeAnimationDuration: settings.settings.motion == 'reduced'
+                ? Duration.zero
+                : const Duration(milliseconds: 300),
             builder: (context, child) {
               final dark = Theme.of(context).brightness == Brightness.dark;
               final reduced = settings.reducedMotion(context);
@@ -58,15 +70,27 @@ class _AdiMusicAppState extends State<AdiMusicApp> {
                 value: SystemUiOverlayStyle(
                   statusBarColor: Colors.transparent,
                   systemNavigationBarColor: Colors.transparent,
-                  statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-                  statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-                  systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+                  statusBarIconBrightness: dark
+                      ? Brightness.light
+                      : Brightness.dark,
+                  statusBarBrightness: dark
+                      ? Brightness.dark
+                      : Brightness.light,
+                  systemNavigationBarIconBrightness: dark
+                      ? Brightness.light
+                      : Brightness.dark,
                 ),
                 child: MediaQuery(
-                  data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+                  data: MediaQuery.of(context)
+                      .copyWith(disableAnimations: reduced),
                   child: GlassScope(
                     tier: widget.glassTier,
-                    child: MessageListener(messengerKey: _messengerKey, child: YoutubeHost(child: child ?? const SizedBox.shrink())),
+                    child: MessageListener(
+                      messengerKey: _messengerKey,
+                      child: YoutubeHost(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    ),
                   ),
                 ),
               );

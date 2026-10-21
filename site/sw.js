@@ -5,7 +5,7 @@
 // Bump CACHE when SHELL changes shape (files added or removed). File *contents* do
 // not need a bump: code is fetched network-first and the cache is refreshed.
 
-const CACHE = 'adi-shell-v1';
+const CACHE = 'adi-shell-v4';
 
 const SHELL = [
   '/',
@@ -13,26 +13,27 @@ const SHELL = [
   '/manifest.webmanifest',
   '/favicon.ico',
   '/assets/app.css',
-  '/assets/uno.config.js',
+  '/assets/utilities.css',
+  '/assets/js/uno-dev.js',
   '/assets/js/app.js',
   '/assets/js/config.js',
+  '/assets/js/eq.js',
   '/assets/js/db.js',
   '/assets/js/lyrics.js',
   '/assets/js/palette.js',
+  '/assets/js/presence.js',
   '/assets/js/pwa.js',
   '/assets/js/router.js',
   '/assets/js/sources.js',
   '/assets/js/tags.js',
   '/assets/js/theme.js',
   '/assets/js/util.js',
+  '/assets/js/zip.js',
   '/assets/vendor/alpine.min.js',
   '/assets/vendor/alpine-anchor.min.js',
   '/assets/vendor/alpine-focus.min.js',
   '/assets/vendor/alpine-intersect.min.js',
   '/assets/vendor/alpine-persist.min.js',
-  '/assets/vendor/unocss-preset-wind4.js',
-  '/assets/vendor/unocss-reset.css',
-  '/assets/vendor/unocss-runtime-core.js',
   '/components/collection',
   '/components/discovery',
   '/components/home',
@@ -45,7 +46,10 @@ const SHELL = [
   '/images/icon-192.png',
   '/images/icon-512.png',
   '/images/logo-64.png',
-  '/images/player.png'
+  '/images/player.webp',
+  '/images/player-600.webp',
+  '/images/og.png',
+  '/privacy'
 ];
 
 const PLAYER_ROUTE = /^\/(library(\/.*)?|discovery|settings|player)\/?$/;
@@ -81,7 +85,11 @@ self.addEventListener('fetch', (event) => {
     if (key) event.respondWith(networkFirst(req, key));
     return;
   }
-  event.respondWith(IMMUTABLE.test(url.pathname) ? cacheFirst(req) : networkFirst(req, req));
+  // Pages request /assets/x.css?v=<hash>; the cache is keyed without the version so the precached copy matches.
+  const clean = new URL(url);
+  clean.searchParams.delete('v');
+  const key = clean.href;
+  event.respondWith(IMMUTABLE.test(url.pathname) ? cacheFirst(req, key) : networkFirst(req, key));
 });
 
 async function networkFirst(req, key) {
@@ -101,11 +109,11 @@ async function networkFirst(req, key) {
   }
 }
 
-async function cacheFirst(req) {
+async function cacheFirst(req, key = req) {
   const cache = await caches.open(CACHE);
-  const hit = await cache.match(req);
+  const hit = await cache.match(key);
   if (hit) return hit;
   const res = await fetch(req);
-  if (res.ok) cache.put(req, res.clone());
+  if (res.ok) cache.put(key, res.clone());
   return res;
 }

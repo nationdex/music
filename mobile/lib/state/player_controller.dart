@@ -12,43 +12,49 @@ import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt;
 
-import '../core/config.dart';
+import '../core/eq_math.dart';
 import '../data/models.dart';
+import '../services/discovery_service.dart';
 import '../services/lyrics_parser.dart';
 import '../services/lyrics_service.dart';
 import 'audio_handler.dart';
+import 'eq_engine.dart';
 import 'library_controller.dart';
 import 'settings_controller.dart';
 import 'youtube_bridge.dart';
 
 enum RepeatSetting { off, all, one }
 
-/// One band of the equalizer as the device reports it.
-class EqBand {
-  EqBand({required this.frequency, required this.gain, required this.apply});
-
-  final double frequency;
-  double gain;
-  final Future<void> Function(double gain) apply;
-
-  String get label => frequency >= 1000 ? '${(frequency / 1000).toStringAsFixed(frequency % 1000 == 0 ? 0 : 1)}kHz' : '${frequency.round()}Hz';
-}
-
 class PlayerController extends ChangeNotifier implements PlaybackActions {
   PlayerController({
     required this.library,
     required this.settings,
     LyricsService? lyricsService,
+    DiscoveryService? discovery,
+    YoutubeBridge Function({
+      required void Function(yt.PlayerState) onState,
+      required void Function(double, double) onTick,
+      required void Function(String) onError,
+    })?
+    youtubeFactory,
     AdiAudioHandler? handler,
+    EqEngine? eqEngine,
     AudioPlayer? player,
     Random? random,
   }) : _lyrics = lyricsService ?? LyricsService(),
+       _discovery = discovery ?? DiscoveryService(),
        _handler = handler,
        _random = random ?? Random() {
-    final eq = Platform.isAndroid ? AndroidEqualizer() : null;
-    _androidEq = eq;
-    _player = player ?? AudioPlayer(audioPipeline: eq == null ? null : AudioPipeline(androidAudioEffects: [eq]));
-    _youtube = YoutubeBridge(onState: _onYouTubeState, onTick: _onYouTubeTick, onError: _onYouTubeError);
+    _eqEngine =
+        eqEngine ??
+        (Platform.isAndroid && player == null ? AndroidEqEngine() : null);
+    _player = player ?? AudioPlayer(audioPipeline: _eqEngine?.pipeline);
+    eq = settings.loadEq();
+    _youtube = (youtubeFactory ?? YoutubeBridge.new)(
+      onState: _onYouTubeState,
+      onTick: _onYouTubeTick,
+      onError: _onYouTubeError,
+    );
     _handler?.bind(this);
     library.onTracksRemoved = _onTracksRemoved;
     volume = settings.settings.volume;
@@ -58,14 +64,16 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
   final LibraryController library;
   final SettingsController settings;
   final LyricsService _lyrics;
+  final DiscoveryService _discovery;
   final AdiAudioHandler? _handler;
   final Random _random;
 
   late final AudioPlayer _player;
   late final YoutubeBridge _youtube;
-  AndroidEqualizer? _androidEq;
+  EqEngine? _eqEngine;
 
-  ValueListenable<yt.YoutubePlayerController?> get youtubeController => _youtube.controller;
+  ValueListenable<yt.YoutubePlayerController?> get youtubeController =>
+      _youtube.controller;
 
   // ------------------------------------------------------------------ state
 
@@ -114,12 +122,16 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
 
   // -------------------------------------------------------------- equalizer
 
-  /// Android only: the OS equalizer, with the bands the device offers.
-  List<EqBand> eqBands = const [];
-  double eqMinDb = -12, eqMaxDb = 12;
-  String eqPreset = 'Flat';
-  bool get eqSupported => _androidEq != null && eqBands.isNotEmpty;
-  bool get eqPlatformSupported => _androidEq != null;
+  /// Ten-band settings, the same on every platform. Android maps them onto the bands the device has.
+  late EqState eq;
+
+  /// Center frequencies of the device's own bands (Android), once known.
+  List<double> eqDeviceFrequencies = const [];
+  double _eqVolumeScale = 1;
+
+  bool get eqPlatformSupported => _eqEngine != null;
+  bool get eqSupported => _eqEngine != null && eqDeviceFrequencies.isNotEmpty;
+  double get eqPreamp => eq.auto ? autoPreamp(eq.gains) : eq.preamp;
 
   // ----------------------------------------------------------------- engine
 
@@ -130,8 +142,11 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
     _subs.add(
       _player.playerStateStream.listen((s) {
         if (ytMode) return;
-        final playing = s.playing && s.processingState != ProcessingState.completed;
-        final loading = s.processingState == ProcessingState.loading || s.processingState == ProcessingState.buffering;
+        final playing =
+            s.playing && s.processingState != ProcessingState.completed;
+        final loading =
+            s.processingState == ProcessingState.loading ||
+            s.processingState == ProcessingState.buffering;
         if (playing != isPlaying || loading != isLoading) {
           isPlaying = playing;
           isLoading = loading;
@@ -171,23 +186,19 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
   }
 
   Future<void> _initEqualizer() async {
-    final eq = _androidEq;
-    if (eq == null) return;
-    try {
-      await eq.setEnabled(true);
-      final params = await eq.parameters.timeout(const Duration(seconds: 10));
-      eqMinDb = params.minDecibels;
-      eqMaxDb = params.maxDecibels;
-      eqBands = [for (final b in params.bands) EqBand(frequency: b.centerFrequency, gain: b.gain, apply: b.setGain)];
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Equalizer unavailable: $e');
-    }
+    final engine = _eqEngine;
+    if (engine == null) return;
+    final freqs = await engine.init();
+    if (freqs == null) return;
+    eqDeviceFrequencies = freqs;
+    await _applyEq(save: false);
+    notifyListeners();
   }
 
   // -------------------------------------------------------------- transport
 
-  bool isCurrent(Track? t) => currentTrack != null && t != null && currentTrack!.id == t.id;
+  bool isCurrent(Track? t) =>
+      currentTrack != null && t != null && currentTrack!.id == t.id;
 
   double get timelineFraction {
     final d = duration.value.inMilliseconds;
@@ -198,7 +209,10 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
     if (index < 0 || index >= list.length) return;
     _queueOriginal = list.toList();
     if (shuffle) {
-      final rest = [for (var i = 0; i < list.length; i++) if (i != index) list[i]]..shuffle(_random);
+      final rest = [
+        for (var i = 0; i < list.length; i++)
+          if (i != index) list[i],
+      ]..shuffle(_random);
       queue = [list[index], ...rest];
       queuePos = 0;
     } else {
@@ -254,7 +268,10 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
       final cur = queue[queuePos];
       if (shuffle) {
         _queueOriginal = queue.toList();
-        final rest = [for (var i = 0; i < queue.length; i++) if (i != queuePos) queue[i]]..shuffle(_random);
+        final rest = [
+          for (var i = 0; i < queue.length; i++)
+            if (i != queuePos) queue[i],
+        ]..shuffle(_random);
         queue = [cur, ...rest];
         queuePos = 0;
       } else {
@@ -289,6 +306,10 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
     _publishItem(track);
 
     if (track.isYouTube) {
+      _ytTried = {track.videoId ?? ''};
+      _ytAlternatives = null;
+      _ytAlternativesFor = null;
+      _ytNotified = false;
       await _startYouTube(track, token);
     } else {
       await _stopYouTube();
@@ -306,7 +327,11 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
         if (token != _playToken) return;
         isPlaying = false;
         isLoading = false;
-        _say(track.isLocal ? 'This track’s audio is missing. Import it again.' : 'Could not play “${track.name}”');
+        _say(
+          track.isLocal
+              ? 'This track’s audio is missing. Import it again.'
+              : 'Could not play “${track.name}”',
+        );
         _publishState();
         return;
       }
@@ -416,7 +441,8 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
     _publishState();
   }
 
-  Future<void> seekToLine(LyricLine line) => seekTo(Duration(milliseconds: (line.t * 1000).round()));
+  Future<void> seekToLine(LyricLine line) =>
+      seekTo(Duration(milliseconds: (line.t * 1000).round()));
 
   Future<void> setVolume(double v) async {
     volume = v.clamp(0.0, 1.0);
@@ -433,7 +459,7 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
   }
 
   Future<void> _applyVolume() async {
-    await _player.setVolume(muted ? 0 : volume);
+    await _player.setVolume(muted ? 0 : volume * _eqVolumeScale);
     await _youtube.setVolume(muted ? 0 : volume);
     await _youtube.setMuted(muted);
   }
@@ -452,13 +478,21 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
   Future<void> _applySpeed() async {
     try {
       await _player.setSpeed(speed);
-      if (Platform.isAndroid) await _player.setPitch(settings.settings.preservePitch ? 1 : speed);
+      if (Platform.isAndroid) {
+        await _player.setPitch(settings.settings.preservePitch ? 1 : speed);
+      }
     } catch (e) {
       debugPrint('Speed not applied: $e');
     }
   }
 
   // ---------------------------------------------------------------- YouTube
+
+  // Per-track state for finding another upload when a video cannot be embedded.
+  Set<String> _ytTried = {};
+  List<DiscoveryItem>? _ytAlternatives;
+  String? _ytAlternativesFor;
+  bool _ytNotified = false;
 
   Future<void> _startYouTube(Track track, int token) async {
     await _player.pause();
@@ -491,7 +525,8 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
       case yt.PlayerState.paused:
         isPlaying = false;
       case yt.PlayerState.ended:
-        _onEnded();
+        // YouTube also reports ENDED when a pre-roll ad finishes. Only a real end moves on.
+        if (_nearEnd()) _onEnded();
         return;
       default:
         return;
@@ -503,24 +538,97 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
   void _onYouTubeTick(double t, double d) {
     if (!ytMode) return;
     position.value = Duration(milliseconds: (t * 1000).round());
-    if (d > 0 && duration.value.inMilliseconds != (d * 1000).round()) duration.value = Duration(milliseconds: (d * 1000).round());
+    if (d > 0 && duration.value.inMilliseconds != (d * 1000).round()) {
+      duration.value = Duration(milliseconds: (d * 1000).round());
+    }
     _syncLyricHighlight(t);
   }
 
-  /// Error 101 and 150 both mean the uploader blocked embedding. Skip to the next track
-  /// rather than stopping the queue.
+  bool _nearEnd() {
+    final expected = [
+      currentTrack?.duration ?? 0,
+      duration.value.inMilliseconds / 1000,
+    ].reduce(max);
+    return expected <= 0 ||
+        position.value.inMilliseconds / 1000 >= expected - 3;
+  }
+
+  /// 100 (gone), 101 and 150 (embedding blocked by the uploader or label) cannot be fixed by
+  /// retrying the same video. Try another upload of the song first; skip only if none plays.
   void _onYouTubeError(String reason) {
-    final blockedByOwner = reason == '101' || reason == '150';
+    final unplayable = reason == '100' || reason == '101' || reason == '150';
+    final track = currentTrack;
+    if (unplayable &&
+        track != null &&
+        track.isYouTube &&
+        track.videoId != null) {
+      if (reason != '100') _discovery.blockedVideos.add(track.videoId!);
+      unawaited(
+        _tryYouTubeAlternative(track).then((switched) {
+          if (!switched && currentTrack == track) {
+            _giveUpOnYouTube(unplayable, reason);
+          }
+        }),
+      );
+      return;
+    }
+    _giveUpOnYouTube(unplayable, reason);
+  }
+
+  void _giveUpOnYouTube(bool unplayable, String reason) {
     ytMode = false;
     isPlaying = false;
     isLoading = false;
-    if (blockedByOwner && queue.length > 1 && repeat != RepeatSetting.one) {
-      _say('Skipped: the uploader does not allow this video to play outside YouTube.');
+    if (unplayable && queue.length > 1 && repeat != RepeatSetting.one) {
+      _say('Skipped: no playable version of this song was found.');
       unawaited(nextTrack());
       return;
     }
-    _say(blockedByOwner ? 'The uploader does not allow this video to play outside YouTube.' : 'This video cannot be played here ($reason)');
+    _say(
+      unplayable
+          ? 'This song cannot be played from YouTube.'
+          : 'This video cannot be played here ($reason)',
+    );
     _publishState();
+  }
+
+  /// Switches [track] to the next candidate upload. Returns false when there is none left.
+  Future<bool> _tryYouTubeAlternative(Track track) async {
+    _ytTried.add(track.videoId ?? '');
+    if (_ytAlternativesFor != track.id) {
+      _ytAlternativesFor = track.id;
+      _ytAlternatives = await _discovery.alternativesFor(
+        track,
+        settings.serverUrl,
+        exclude: _ytTried,
+      );
+      if (currentTrack != track) {
+        return true; // the user moved on while searching
+      }
+    }
+    final next = (_ytAlternatives ?? const [])
+        .where(
+          (a) =>
+              !_ytTried.contains(a.id) &&
+              !_discovery.blockedVideos.contains(a.id),
+        )
+        .firstOrNull;
+    if (next == null) return false;
+    _ytTried.add(next.id);
+    track.videoId = next.videoId;
+    if (track.duration == 0 && next.duration > 0) {
+      track.duration = next.duration;
+    }
+    final saved = library.trackById(track.id);
+    if (saved != null) saved.videoId = next.videoId;
+    if (!_ytNotified) {
+      _ytNotified = true;
+      _say(
+        'That upload cannot be embedded. Playing another version of the song.',
+      );
+    }
+    await _startYouTube(track, _playToken);
+    return true;
   }
 
   // ----------------------------------------------------------------- lyrics
@@ -553,7 +661,9 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
       lyricLines = const [];
       lyricsContent = plain;
     }
-    lyricsStatus = lyricLines.isNotEmpty ? LyricsStatus.synced : (plain.isNotEmpty ? LyricsStatus.plain : LyricsStatus.none);
+    lyricsStatus = lyricLines.isNotEmpty
+        ? LyricsStatus.synced
+        : (plain.isNotEmpty ? LyricsStatus.plain : LyricsStatus.none);
     _syncLyricHighlight(position.value.inMilliseconds / 1000);
   }
 
@@ -571,7 +681,9 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
         title: track.name,
         artist: track.artist,
         album: track.album,
-        duration: duration.value.inMilliseconds > 0 ? duration.value.inMilliseconds / 1000 : track.duration,
+        duration: duration.value.inMilliseconds > 0
+            ? duration.value.inMilliseconds / 1000
+            : track.duration,
         prefer: settings.settings.lyricsPrefer,
         provider: settings.settings.lyricsProvider,
       ),
@@ -588,22 +700,100 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
 
   // --------------------------------------------------------------- equalizer
 
-  Future<void> setEqBand(int index, double gain) async {
-    if (index < 0 || index >= eqBands.length) return;
-    final g = gain.clamp(eqMinDb, eqMaxDb).toDouble();
-    eqBands[index].gain = g;
-    await eqBands[index].apply(g);
-    notifyListeners();
+  /// Pushes [eq] to the device and stores it. Negative preamp lowers the player volume (headroom);
+  /// positive preamp uses the loudness enhancer, which can only add.
+  Future<void> _applyEq({bool save = true}) async {
+    if (save) await settings.saveEq(eq);
+    final engine = _eqEngine;
+    if (engine == null) return;
+    final pre = eq.effectivePreamp;
+    _eqVolumeScale = pre < 0 ? dbToGain(pre) : 1;
+    await _applyVolume();
+    await engine.setEnabled(eq.enabled);
+    await engine.setBoostDb(pre > 0 ? pre : 0);
+    if (eqDeviceFrequencies.isNotEmpty) {
+      await engine.setBandGains([
+        for (final f in eqDeviceFrequencies) interpolateGains(eq.gains, f),
+      ]);
+    }
   }
 
-  /// Maps the 10-band preset onto the device's bands by interpolating on a log-frequency axis.
-  Future<void> applyEqPreset(String name) async {
-    eqPreset = name;
-    final gains = eqPresets[name] ?? eqPresets['Flat']!;
-    for (var i = 0; i < eqBands.length; i++) {
-      await setEqBand(i, interpolatePreset(gains, eqBands[i].frequency));
-    }
+  Future<void> _eqChanged() async {
+    eq.preset = eq.matchPreset();
     notifyListeners();
+    await _applyEq();
+  }
+
+  Future<void> setEqEnabled(bool on) async {
+    eq.enabled = on;
+    notifyListeners();
+    await _applyEq();
+  }
+
+  Future<void> setEqBand(int index, double gain) async {
+    if (index < 0 || index >= eq.gains.length) return;
+    eq.gains[index] = clampDb(gain);
+    await _eqChanged();
+  }
+
+  Future<void> applyEqPreset(String name) async {
+    final gains = eqPresets[name] ?? eq.custom[name];
+    if (gains == null) return;
+    eq.gains = List.of(gains);
+    eq.preset = name;
+    notifyListeners();
+    await _applyEq();
+  }
+
+  Future<void> setEqPreamp(double db) async {
+    eq.preamp = clampDb(db);
+    eq.auto = false;
+    notifyListeners();
+    await _applyEq();
+  }
+
+  Future<void> toggleEqAuto() async {
+    if (eq.auto) eq.preamp = (autoPreamp(eq.gains) * 2).round() / 2;
+    eq.auto = !eq.auto;
+    notifyListeners();
+    await _applyEq();
+  }
+
+  Future<void> resetEq() async {
+    eq
+      ..gains = List.of(eqPresets['Flat']!)
+      ..preset = 'Flat'
+      ..preamp = 0
+      ..auto = true;
+    notifyListeners();
+    await _applyEq();
+  }
+
+  /// Returns an error message, or null when saved.
+  Future<String?> saveEqPreset(String rawName) async {
+    final name = rawName.trim().length > 24
+        ? rawName.trim().substring(0, 24)
+        : rawName.trim();
+    if (name.isEmpty) return null;
+    if (eqPresets.containsKey(name)) {
+      return '“$name” is a built-in preset. Pick another name.';
+    }
+    if (!eq.custom.containsKey(name) && eq.custom.length >= eqMaxCustom) {
+      return 'You can keep up to $eqMaxCustom presets.';
+    }
+    eq.custom[name] = List.of(eq.gains);
+    eq.preset = name;
+    notifyListeners();
+    await _applyEq();
+    return null;
+  }
+
+  Future<void> deleteEqPreset() async {
+    if (!eq.custom.containsKey(eq.preset)) return;
+    eq.custom.remove(eq.preset);
+    eq.preset = eq.matchPreset();
+    notifyListeners();
+    await _applyEq();
   }
 
   // ------------------------------------------------------------- media session
@@ -621,11 +811,18 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
     title: t.name,
     artist: t.artist,
     album: t.album,
-    duration: t.duration > 0 ? Duration(milliseconds: (t.duration * 1000).round()) : null,
+    duration: t.duration > 0
+        ? Duration(milliseconds: (t.duration * 1000).round())
+        : null,
     artUri: _artUri(t),
   );
 
-  void _publishState() => _handler?.publishState(playing: isPlaying, loading: isLoading, position: position.value, speed: ytMode ? 1 : speed);
+  void _publishState() => _handler?.publishState(
+    playing: isPlaying,
+    loading: isLoading,
+    position: position.value,
+    speed: ytMode ? 1 : speed,
+  );
 
   @override
   Future<void> remotePlay() async {
@@ -658,7 +855,9 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
       final f = library.artworkFileFor(t);
       if (f != null && await f.exists()) return await f.readAsBytes();
       if (t.artworkUrl != null && t.artworkUrl!.isNotEmpty) {
-        final res = await http.get(Uri.parse(t.artworkUrl!)).timeout(const Duration(seconds: 10));
+        final res = await http
+            .get(Uri.parse(t.artworkUrl!))
+            .timeout(const Duration(seconds: 10));
         return res.statusCode == 200 ? res.bodyBytes : null;
       }
     } catch (_) {}
@@ -706,19 +905,4 @@ class PlayerController extends ChangeNotifier implements PlaybackActions {
     activeLyricIndex.dispose();
     super.dispose();
   }
-}
-
-/// Gain for [frequency] from a 10-band preset, interpolated linearly in log-frequency.
-@visibleForTesting
-double interpolatePreset(List<double> gains, double frequency) {
-  final f = eqBandFrequencies;
-  if (frequency <= f.first) return gains.first;
-  if (frequency >= f.last) return gains.last;
-  for (var i = 0; i < f.length - 1; i++) {
-    if (frequency <= f[i + 1]) {
-      final t = (log(frequency) - log(f[i])) / (log(f[i + 1]) - log(f[i]));
-      return gains[i] + (gains[i + 1] - gains[i]) * t;
-    }
-  }
-  return gains.last;
 }

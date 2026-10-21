@@ -8,7 +8,7 @@ library;
 class Endpoints {
   const Endpoints._();
 
-  static const adi = 'https://lyrics.imreallyadi.space';
+  static const adi = 'https://lyrics.adi.rest';
   static const lrclib = 'https://lrclib.net';
   static const lrcmux = 'https://api.lrcmux.dev';
   static const itunes = 'https://itunes.apple.com';
@@ -59,19 +59,6 @@ const derivativeTitles = <String>[
   'sped up',
   'nightcore',
 ];
-
-/// 10-band equalizer presets, in dB.
-const eqPresets = <String, List<double>>{
-  'Flat': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  'Bass Boost': [7, 6, 5, 3, 1, 0, 0, 0, 0, 0],
-  'Vocal': [-2, -1, 1, 3, 4, 4, 3, 1, 0, -1],
-  'Treble': [-1, -1, 0, 0, 1, 2, 4, 6, 7, 8],
-  'Rock': [5, 4, 2, -1, -2, 0, 2, 4, 5, 6],
-  'Electronic': [6, 5, 2, 0, -2, 2, 1, 3, 5, 6],
-};
-
-/// Centre frequencies (Hz) of the 10 preset bands.
-const eqBandFrequencies = <double>[32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 
 const sortKeys = <(String, String)>[
   ('name', 'Name'),

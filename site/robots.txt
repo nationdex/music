@@ -5,3 +5,6 @@ Disallow: /library/
 Disallow: /discovery
 Disallow: /settings
 Disallow: /player
+Disallow: /up/
+
+Sitemap: <!--# echo var="public_url" -->/sitemap.xml

@@ -38,14 +38,22 @@ class GlassScope extends InheritedWidget {
 
   final GlassTier tier;
 
-  static GlassTier of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<GlassScope>()?.tier ?? GlassTier.solid;
+  static GlassTier of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GlassScope>()?.tier ??
+      GlassTier.solid;
 
   @override
   bool updateShouldNotify(GlassScope old) => old.tier != tier;
 }
 
 class GlassSurface extends StatelessWidget {
-  const GlassSurface({super.key, required this.child, this.borderRadius = 28, this.padding, this.solidColor});
+  const GlassSurface({
+    super.key,
+    required this.child,
+    this.borderRadius = 28,
+    this.padding,
+    this.solidColor,
+  });
 
   final Widget child;
   final double borderRadius;
@@ -57,9 +65,13 @@ class GlassSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final off = context.select<SettingsController, bool>((s) => s.settings.glass == 'off');
+    final off = context.select<SettingsController, bool>(
+      (s) => s.settings.glass == 'off',
+    );
     final tier = off ? GlassTier.solid : GlassScope.of(context);
-    final content = padding == null ? child : Padding(padding: padding!, child: child);
+    final content = padding == null
+        ? child
+        : Padding(padding: padding!, child: child);
 
     switch (tier) {
       case GlassTier.liquid:
@@ -84,7 +96,9 @@ class GlassSurface extends StatelessWidget {
               decoration: BoxDecoration(
                 color: scheme.surfaceContainer.withValues(alpha: 0.72),
                 borderRadius: radius,
-                border: Border.all(color: scheme.onSurface.withValues(alpha: 0.08)),
+                border: Border.all(
+                  color: scheme.onSurface.withValues(alpha: 0.08),
+                ),
               ),
               child: content,
             ),

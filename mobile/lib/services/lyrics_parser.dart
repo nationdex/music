@@ -38,8 +38,12 @@ double? parseTtmlTime(String? raw) {
   final value = raw.trim();
   if (value.isEmpty) return null;
 
-  if (RegExp(r'^-?\d+(\.\d+)?ms$').hasMatch(value)) return double.parse(value.substring(0, value.length - 2)) / 1000;
-  if (RegExp(r'^-?\d+(\.\d+)?s$').hasMatch(value)) return double.parse(value.substring(0, value.length - 1));
+  if (RegExp(r'^-?\d+(\.\d+)?ms$').hasMatch(value)) {
+    return double.parse(value.substring(0, value.length - 2)) / 1000;
+  }
+  if (RegExp(r'^-?\d+(\.\d+)?s$').hasMatch(value)) {
+    return double.parse(value.substring(0, value.length - 1));
+  }
   if (RegExp(r'^-?\d+(\.\d+)?$').hasMatch(value)) return double.parse(value);
 
   final parts = value.split(':').map((p) => p.trim()).toList();
@@ -66,7 +70,10 @@ const _ttmlEntities = {
 
 String _decodeTtmlText(String raw) {
   var out = raw.replaceAll(RegExp(r'<[^>]+>'), '');
-  out = out.replaceAllMapped(RegExp(r'&[a-zA-Z#0-9]+;'), (m) => _ttmlEntities[m.group(0)] ?? ' ');
+  out = out.replaceAllMapped(
+    RegExp(r'&[a-zA-Z#0-9]+;'),
+    (m) => _ttmlEntities[m.group(0)] ?? ' ',
+  );
   return out.replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
@@ -75,9 +82,18 @@ List<LyricLine> parseTtml(String? source) {
   if (source == null || source.isEmpty) return [];
   final lines = <LyricLine>[];
   final para = RegExp(r'<p\b([^>]*)>([\s\S]*?)</p>', caseSensitive: false);
-  final beginRe = RegExp(r'''\bbegin\s*=\s*["']([^"']+)["']''', caseSensitive: false);
-  final endRe = RegExp(r'''\bend\s*=\s*["']([^"']+)["']''', caseSensitive: false);
-  final durRe = RegExp(r'''\bdur\s*=\s*["']([^"']+)["']''', caseSensitive: false);
+  final beginRe = RegExp(
+    r'''\bbegin\s*=\s*["']([^"']+)["']''',
+    caseSensitive: false,
+  );
+  final endRe = RegExp(
+    r'''\bend\s*=\s*["']([^"']+)["']''',
+    caseSensitive: false,
+  );
+  final durRe = RegExp(
+    r'''\bdur\s*=\s*["']([^"']+)["']''',
+    caseSensitive: false,
+  );
 
   for (final m in para.allMatches(source)) {
     final attrs = m.group(1) ?? '';

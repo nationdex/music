@@ -10,7 +10,16 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
 class Tags {
-  const Tags({this.title, this.artist, this.albumArtist, this.album, this.year, this.trackNo, this.duration, this.picture});
+  const Tags({
+    this.title,
+    this.artist,
+    this.albumArtist,
+    this.album,
+    this.year,
+    this.trackNo,
+    this.duration,
+    this.picture,
+  });
 
   final String? title;
   final String? artist;
@@ -38,8 +47,12 @@ Tags _readTagsSync(String path) {
     final meta = readMetadata(File(path), getImage: true);
     Uint8List? art;
     if (meta.pictures.isNotEmpty) {
-      final front = meta.pictures.where((p) => p.pictureType == PictureType.coverFront);
-      art = shrinkArtwork((front.isNotEmpty ? front.first : meta.pictures.first).bytes);
+      final front = meta.pictures.where(
+        (p) => p.pictureType == PictureType.coverFront,
+      );
+      art = shrinkArtwork(
+        (front.isNotEmpty ? front.first : meta.pictures.first).bytes,
+      );
     }
     String? clean(String? s) {
       final t = s?.trim();
@@ -53,7 +66,9 @@ Tags _readTagsSync(String path) {
       album: clean(meta.album),
       year: meta.year?.year.toString(),
       trackNo: meta.trackNumber,
-      duration: meta.duration == null ? null : meta.duration!.inMilliseconds / 1000.0,
+      duration: meta.duration == null
+          ? null
+          : meta.duration!.inMilliseconds / 1000.0,
       picture: art,
     );
   } catch (e) {
@@ -69,7 +84,9 @@ Uint8List? shrinkArtwork(Uint8List bytes) {
   try {
     final decoded = img.decodeImage(bytes);
     if (decoded == null) return null;
-    final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
+    final longest = decoded.width > decoded.height
+        ? decoded.width
+        : decoded.height;
     final resized = longest > artworkMaxEdge
         ? img.copyResize(
             decoded,

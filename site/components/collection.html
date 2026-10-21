@@ -20,10 +20,10 @@
     </div>
 
     <!-- Albums grid -->
-    <div x-show="route.name === 'albums'" class="grid gap-4 pb-4" style="grid-template-columns: repeat(auto-fill, 13.75rem)">
+    <div x-show="route.name === 'albums'" class="grid grid-cols-2 gap-4 pb-4 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] lg:grid-cols-[repeat(auto-fill,13.75rem)]">
       <template x-for="album in filteredAlbums" :key="album.id">
         <a :href="'/library/albums/' + album.id" @click.prevent="go('/library/albums/' + album.id)"
-           class="interactable group w-55 flex-col items-stretch overflow-hidden rounded-2xl bg-surfaceContainer text-left" :class="route.id === album.id ? 'bg-surfaceContainerHigh' : ''">
+           class="interactable group w-full flex-col lg:w-55 items-stretch overflow-hidden rounded-2xl bg-surfaceContainer text-left" :class="route.id === album.id ? 'bg-surfaceContainerHigh' : ''">
           <div class="relative aspect-square w-full overflow-hidden rounded-2xl bg-secondaryContainer text-onSecondaryContainer">
             <template x-if="album.artwork"><img :src="album.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
             <template x-if="!album.artwork"><svg class="absolute inset-0 m-auto size-12 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-album"></use></svg></template>
@@ -37,10 +37,10 @@
     </div>
 
     <!-- Artists grid -->
-    <div x-show="route.name === 'artists'" class="grid gap-4 pb-4" style="grid-template-columns: repeat(auto-fill, 13.75rem)">
+    <div x-show="route.name === 'artists'" class="grid grid-cols-2 gap-4 pb-4 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] lg:grid-cols-[repeat(auto-fill,13.75rem)]">
       <template x-for="artist in filteredArtists" :key="artist.id">
         <a :href="'/library/artists/' + artist.id" @click.prevent="go('/library/artists/' + artist.id)"
-           class="interactable w-55 flex-col items-stretch overflow-hidden rounded-2xl bg-surfaceContainer p-3 text-left" :class="route.id === artist.id ? 'bg-surfaceContainerHigh' : ''">
+           class="interactable w-full flex-col lg:w-55 items-stretch overflow-hidden rounded-2xl bg-surfaceContainer p-3 text-left" :class="route.id === artist.id ? 'bg-surfaceContainerHigh' : ''">
           <div class="relative aspect-square w-full overflow-hidden rounded-full bg-secondaryContainer text-onSecondaryContainer">
             <template x-if="artist.artwork"><img :src="artist.artwork" alt="" class="size-full object-cover" loading="lazy" /></template>
             <template x-if="!artist.artwork"><svg class="absolute inset-0 m-auto size-12 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-person"></use></svg></template>

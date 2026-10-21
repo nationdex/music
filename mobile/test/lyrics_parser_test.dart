@@ -22,7 +22,10 @@ void main() {
     });
 
     test('handles CRLF, null and empty input', () {
-      expect(parseLrc('[00:01.00] a\r\n[00:02.00] b').map((l) => l.text), ['a', 'b']);
+      expect(parseLrc('[00:01.00] a\r\n[00:02.00] b').map((l) => l.text), [
+        'a',
+        'b',
+      ]);
       expect(parseLrc(null), isEmpty);
       expect(parseLrc(''), isEmpty);
     });

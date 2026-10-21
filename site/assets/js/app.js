@@ -1,18 +1,45 @@
 // Adi Music: Alpine.js app (library, router, player) and audio controller.
-// Lyrics source: Adi Lyrics aggregator (https://lyrics.imreallyadi.space)
+// Lyrics source: Adi Lyrics aggregator (https://lyrics.adi.rest)
 
-import { DEFAULT_SETTINGS, EQ_PRESETS } from './config.js';
+import { DEFAULT_SETTINGS } from './config.js';
+import {
+  EQ_LABELS,
+  EQ_MAX_CUSTOM,
+  EQ_PRESETS,
+  EQ_RANGE,
+  Equalizer,
+  autoPreamp,
+  clampDb,
+  curvePath,
+  defaultEq,
+  effectivePreamp,
+  eqIsActive,
+  logFreqs,
+  matchPreset,
+  normalizeEq,
+  responseDb
+} from './eq.js';
 import { idbAll, idbClear, idbDelete, idbGet, idbPut } from './db.js';
 import { parseLRC, parseTTML, resolveLyrics } from './lyrics.js';
 import { DEFAULT_SEED_HUE, DEFAULT_TOKENS, hexToHsl, rotateHex } from './palette.js';
+import { buildPresence, presence } from './presence.js';
 import { pwa } from './pwa.js';
 import { resolveRoute } from './router.js';
-import { YTBridge, cleanYouTubeMeta, itunesSearch, youtubeSearch } from './sources.js';
+import { YTBridge, blockedVideos, cleanYouTubeMeta, findYouTubeAlternatives, itunesSearch, youtubeSearch } from './sources.js';
 import { compressArtwork, probeDuration, readTags } from './tags.js';
 import { slugId } from './util.js';
+import { ZipReader, baseName, isZipFile, mimeFor } from './zip.js';
 
 // Object URLs for stored audio blobs, created on first play.
 const fileUrls = new Map();
+
+const LIGHT_DARK = typeof CSS !== 'undefined' && CSS.supports('color', 'light-dark(red, blue)');
+
+// Per-track state for finding another upload when a YouTube video cannot be embedded.
+let equalizer = null; // not reactive on purpose: Alpine would wrap the AudioNodes in proxies
+let spectrumFrame = 0;
+
+const ytFallback = { tried: new Set(), alts: null, altsFor: null, notified: false };
 
 function initAlpineApp() {
   if (!window.Alpine || window.Alpine._adiInitialized) return;
@@ -97,22 +124,11 @@ function initAlpineApp() {
 
     // ---- equalizer
     EQ_PRESETS,
-    audioCtx: null,
-    eqSource: null,
-    eqFilters: [],
-    selectedEqPreset: 'Flat',
-    eqBands: [
-      { freq: '32Hz', f: 32, gain: 0 },
-      { freq: '64Hz', f: 64, gain: 0 },
-      { freq: '125Hz', f: 125, gain: 0 },
-      { freq: '250Hz', f: 250, gain: 0 },
-      { freq: '500Hz', f: 500, gain: 0 },
-      { freq: '1kHz', f: 1000, gain: 0 },
-      { freq: '2kHz', f: 2000, gain: 0 },
-      { freq: '4kHz', f: 4000, gain: 0 },
-      { freq: '8kHz', f: 8000, gain: 0 },
-      { freq: '16kHz', f: 16000, gain: 0 }
-    ],
+    EQ_LABELS,
+    EQ_RANGE,
+    eq: Alpine.$persist(defaultEq()).as('adimusic:eq'),
+    eqCustomName: '',
+    eqNaming: false,
 
     // ---- lyrics
     lyricsContent: '',
@@ -161,9 +177,10 @@ function initAlpineApp() {
 
       window.addEventListener('popstate', () => this.go(location.pathname + location.search, { replace: true, fromPop: true }));
 
-      this.initEqualizerAudioGraph();
+      this.setupEqualizer();
       this.setupMediaSession();
       this.setupInstall();
+      this.setupPresence();
       this.setupFileLaunch();
       await this.loadLibrary();
 
@@ -324,20 +341,53 @@ function initAlpineApp() {
       }
     },
 
-    async importFiles(fileList) {
+    // Turns what the user picked into import jobs. Audio files are jobs as they are; a .zip becomes one
+    // job per audio member, and a member is only extracted when its turn comes (see zip.js).
+    async importJobs(fileList) {
       const exts = /\.(mp3|m4a|m4b|aac|flac|ogg|oga|opus|wav|webm|mp4)$/i;
-      const files = Array.from(fileList || []).filter((f) => (f.type || '').startsWith('audio/') || exts.test(f.name));
-      if (!files.length) {
+      const jobs = [];
+      for (const f of Array.from(fileList || [])) {
+        if (isZipFile(f)) {
+          try {
+            const zip = await ZipReader.open(f);
+            for (const entry of zip.audioEntries()) {
+              const name = baseName(entry.name);
+              jobs.push({
+                key: f.name + '!' + entry.name + ':' + entry.size + ':' + f.lastModified,
+                name,
+                load: async () => new File([await zip.read(entry)], name, { type: mimeFor(name), lastModified: entry.mtime.getTime() })
+              });
+            }
+          } catch (e) {
+            this.snackbar('Could not read “' + f.name + '”: ' + (e.message || 'not a valid ZIP file'));
+          }
+        } else if ((f.type || '').startsWith('audio/') || exts.test(f.name)) {
+          jobs.push({ key: f.name + ':' + f.size + ':' + f.lastModified, name: f.name, load: async () => f });
+        }
+      }
+      return jobs;
+    },
+
+    async importFiles(fileList) {
+      const jobs = await this.importJobs(fileList);
+      if (!jobs.length) {
         this.snackbar('No audio files found');
         return;
       }
       const sid = 'import';
       let added = 0;
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i];
-        this.snackbar('Importing ' + (i + 1) + ' of ' + files.length + '…', { id: sid, duration: 0 });
-        const fileKey = f.name + ':' + f.size + ':' + f.lastModified;
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i];
+        this.snackbar('Importing ' + (i + 1) + ' of ' + jobs.length + '…', { id: sid, duration: 0 });
+        const fileKey = job.key;
         if (this.tracks.some((t) => t.fileKey === fileKey)) continue;
+        let f;
+        try {
+          f = await job.load();
+        } catch (e) {
+          this.snackbar('Skipped “' + job.name + '”: ' + (e.message || 'could not be unzipped'));
+          continue;
+        }
         const tags = await readTags(f);
         const duration = await probeDuration(f);
         const artwork = tags.picture ? await compressArtwork(tags.picture) : null;
@@ -721,6 +771,7 @@ function initAlpineApp() {
       this.lyricsStatus = 'idle';
       this.addToHistory(track);
       if (track.source === 'youtube') {
+        Object.assign(ytFallback, { tried: new Set([track.videoId]), alts: null, altsFor: null, notified: false });
         await this.startYouTube(track);
       } else {
         this.stopYouTube();
@@ -782,9 +833,7 @@ function initAlpineApp() {
     },
 
     resumeAudio() {
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch((e) => console.warn('AudioContext resume failed:', e));
-      }
+      if (equalizer) equalizer.resume();
     },
 
     togglePlay() {
@@ -867,6 +916,7 @@ function initAlpineApp() {
       this.currentTime = t;
       this.syncLyricHighlight();
       this.updatePositionState();
+      this.syncPresence();
     },
 
     setVolume(e) {
@@ -943,7 +993,11 @@ function initAlpineApp() {
       if (!this.ytMode) return;
       if (state === 1) this.isPlaying = true;
       else if (state === 2) this.isPlaying = false;
-      else if (state === 0) this.onEnded();
+      else if (state === 0) {
+        // Ignore the ENDED that follows a pre-roll ad; only a real end moves to the next track.
+        const total = this.currentTrack ? this.currentTrack.duration : 0;
+        if (YTBridge.nearEnd(total)) this.onEnded();
+      }
     },
     onYTTick({ t, d }) {
       if (!this.ytMode) return;
@@ -951,18 +1005,98 @@ function initAlpineApp() {
       if (d) this.duration = d;
       this.syncLyricHighlight();
     },
-    // 101 and 150 both mean the uploader blocked embedding. Nothing can play it in the
-    // iframe, so move on to the next track instead of stopping the queue.
-    onYTError(code) {
-      const blockedByOwner = code === 101 || code === 150 || code === '101' || code === '150';
+    // 100 (gone), 101 and 150 (embedding blocked by the uploader or label) cannot be fixed by
+    // retrying the same video. Try another upload of the song first; skip only if none plays.
+    async onYTError(code) {
+      const unplayable = ['100', '101', '150'].includes(String(code));
+      const track = this.currentTrack;
+      if (unplayable && track && track.source === 'youtube' && track.videoId) {
+        if (String(code) !== '100') blockedVideos.add(track.videoId);
+        if (await this.tryYouTubeAlternative(track)) return;
+      }
       this.ytMode = false;
       this.isPlaying = false;
-      if (blockedByOwner && this.queue.length > 1 && this.repeat !== 'one') {
-        this.snackbar('Skipped: the uploader does not allow this video to play outside YouTube.');
+      if (unplayable && this.queue.length > 1 && this.repeat !== 'one') {
+        this.snackbar('Skipped: no playable version of this song was found.');
         this.nextTrack();
         return;
       }
-      this.snackbar(blockedByOwner ? 'The uploader does not allow this video to play outside YouTube.' : 'This video cannot be played here (YouTube error ' + code + ')');
+      this.snackbar(
+        unplayable ? 'This song cannot be played from YouTube.' : 'This video cannot be played here (YouTube error ' + code + ')'
+      );
+    },
+
+    /** Switches [track] to the next candidate upload. Returns false when there is none left. */
+    async tryYouTubeAlternative(track) {
+      ytFallback.tried.add(track.videoId);
+      if (ytFallback.altsFor !== track.id) {
+        ytFallback.altsFor = track.id;
+        ytFallback.alts = await findYouTubeAlternatives(track, [...ytFallback.tried]);
+        if (this.currentTrack !== track) return true; // the user moved on while searching
+      }
+      const next = (ytFallback.alts || []).find((a) => !ytFallback.tried.has(a.id) && !blockedVideos.has(a.id));
+      if (!next) return false;
+      ytFallback.tried.add(next.id);
+      track.videoId = next.id;
+      if (!track.duration && next.duration) track.duration = next.duration;
+      const saved = this.tracks.find((t) => t.id === track.id);
+      if (saved) {
+        saved.videoId = next.id;
+        this.persistTrack(saved);
+      }
+      if (!ytFallback.notified) {
+        ytFallback.notified = true;
+        this.snackbar('That upload cannot be embedded. Playing another version of the song.');
+      }
+      await this.startYouTube(track);
+      return true;
+    },
+
+    // ---- Discord Rich Presence
+    discordStatus: 'off',
+    setupPresence() {
+      presence.onStatus = (s) => {
+        this.discordStatus = s;
+      };
+      for (const key of ['currentTrack', 'isPlaying', 'settings.discordRpc', 'settings.discordClientId']) {
+        this.$watch(key, () => this.syncPresence());
+      }
+      // Leave nothing behind on Discord when the tab closes.
+      window.addEventListener('pagehide', () => {
+        if (this.settings.discordRpc)
+          fetch('http://127.0.0.1:6480/clear', { method: 'POST', mode: 'no-cors', keepalive: true }).catch(() => {});
+      });
+    },
+    // Debounced: Discord throttles activity updates, and play/track/seek events arrive in bursts.
+    syncPresence() {
+      clearTimeout(this._presenceTimer);
+      this._presenceTimer = setTimeout(() => {
+        const s = this.settings;
+        if (!s.discordRpc || !/^\d{5,25}$/.test(String(s.discordClientId || '').trim())) {
+          if (presence.status !== 'off') presence.clear();
+          presence._set('off');
+          return;
+        }
+        if (!this.currentTrack) return presence.clear();
+        presence.update(
+          buildPresence(s.discordClientId.trim(), this.currentTrack, {
+            playing: this.isPlaying,
+            position: this.currentTime,
+            duration: this.duration || this.currentTrack.duration
+          })
+        );
+      }, 1200);
+    },
+    async testDiscord() {
+      const status = await presence.check();
+      const messages = {
+        connected: 'Discord is connected.',
+        'no-bridge': 'The bridge is not running. Start tools/discord-rpc/adi-discord-rpc.py on this computer.',
+        'no-discord': 'The bridge is running, but Discord is not. Open the Discord desktop app.',
+        error: 'Discord refused the update. Check the application id.'
+      };
+      this.snackbar(messages[status] || 'Discord presence is off.');
+      this.syncPresence();
     },
 
     // ---- install (PWA)
@@ -1035,43 +1169,129 @@ function initAlpineApp() {
     },
 
     // ---- equalizer
-    initEqualizerAudioGraph() {
-      if (!this.audioEl || this.audioCtx) return;
-      try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        this.audioCtx = new AudioContext();
-        this.eqSource = this.audioCtx.createMediaElementSource(this.audioEl);
-        let last = this.eqSource;
-        this.eqFilters = this.eqBands.map((band, idx) => {
-          const filter = this.audioCtx.createBiquadFilter();
-          if (idx === 0) filter.type = 'lowshelf';
-          else if (idx === this.eqBands.length - 1) filter.type = 'highshelf';
-          else {
-            filter.type = 'peaking';
-            filter.Q.value = 1.4;
-          }
-          filter.frequency.value = band.f;
-          filter.gain.value = band.gain || 0;
-          last.connect(filter);
-          last = filter;
-          return filter;
-        });
-        last.connect(this.audioCtx.destination);
-      } catch (e) {
-        console.warn('Web Audio equalizer unavailable:', e);
+    setupEqualizer() {
+      this.eq = normalizeEq(JSON.parse(JSON.stringify(this.eq)));
+      if (eqIsActive(this.eq)) this.eqSync();
+      // The spectrum only animates while the dialog is open and the user has not asked for less motion.
+      this.$watch('dialog.type', (type) => (type === 'equalizer' ? this.$nextTick(() => this.startSpectrum()) : this.stopSpectrum()));
+      this.$watch('isPlaying', () => this.dialog.type === 'equalizer' && this.startSpectrum());
+    },
+
+    // Applies this.eq to the audio. The graph is only built once the equalizer actually does something.
+    eqSync() {
+      if (!equalizer && eqIsActive(this.eq)) equalizer = new Equalizer(this.audioEl);
+      if (equalizer && !equalizer.connected && !equalizer.connect()) return;
+      if (equalizer) {
+        equalizer.resume();
+        equalizer.apply(this.eq);
+        if (this.dialog.type === 'equalizer' && !spectrumFrame) this.startSpectrum();
       }
     },
+    eqChanged() {
+      this.eq.preset = matchPreset(this.eq.gains, this.eq.custom);
+      this.eqSync();
+    },
+    get eqPreamp() {
+      return effectivePreamp({ ...this.eq, enabled: true });
+    },
+    get eqPresetNames() {
+      return [...Object.keys(EQ_PRESETS), ...Object.keys(this.eq.custom)];
+    },
+    get eqIsCustomPreset() {
+      return this.eq.preset in this.eq.custom;
+    },
+    get eqCurve() {
+      const dbs = responseDb(this.eq.enabled ? this.eq.gains : EQ_PRESETS.Flat, logFreqs(96), this.eq.enabled ? this.eqPreamp : 0);
+      return curvePath(dbs, 300, 96);
+    },
+    get eqAffectsPlayback() {
+      return !this.ytMode;
+    },
     updateEqBand(idx, gainVal) {
-      const val = Number(gainVal);
-      if (this.eqBands[idx]) this.eqBands[idx].gain = val;
-      this.resumeAudio();
-      if (this.eqFilters[idx]) this.eqFilters[idx].gain.value = val;
+      this.eq.gains[idx] = clampDb(gainVal);
+      this.eqChanged();
     },
     applyEqPreset(name) {
-      this.selectedEqPreset = name;
-      const gains = EQ_PRESETS[name] || EQ_PRESETS.Flat;
-      this.eqBands.forEach((_, i) => this.updateEqBand(i, gains[i] || 0));
+      const gains = EQ_PRESETS[name] || this.eq.custom[name];
+      if (!gains) return;
+      this.eq.gains = gains.slice();
+      this.eq.preset = name;
+      this.eqSync();
+    },
+    setEqPreamp(db) {
+      this.eq.preamp = clampDb(db);
+      this.eq.auto = false;
+      this.eqSync();
+    },
+    toggleEqAuto() {
+      if (this.eq.auto) this.eq.preamp = Math.round(autoPreamp(this.eq.gains) * 2) / 2;
+      this.eq.auto = !this.eq.auto;
+      this.eqSync();
+    },
+    toggleEq() {
+      this.eq.enabled = !this.eq.enabled;
+      this.eqSync();
+    },
+    resetEq() {
+      Object.assign(this.eq, { gains: EQ_PRESETS.Flat.slice(), preset: 'Flat', preamp: 0, auto: true });
+      this.eqSync();
+    },
+    saveEqPreset() {
+      const name = this.eqCustomName.trim().slice(0, 24);
+      if (!name) return;
+      if (name in EQ_PRESETS) return this.snackbar('“' + name + '” is a built-in preset. Pick another name.');
+      if (!(name in this.eq.custom) && Object.keys(this.eq.custom).length >= EQ_MAX_CUSTOM)
+        return this.snackbar('You can keep up to ' + EQ_MAX_CUSTOM + ' presets.');
+      this.eq.custom = { ...this.eq.custom, [name]: this.eq.gains.slice() };
+      this.eq.preset = name;
+      this.eqCustomName = '';
+      this.eqNaming = false;
+      this.snackbar('Saved preset “' + name + '”');
+    },
+    deleteEqPreset() {
+      const name = this.eq.preset;
+      if (!(name in this.eq.custom)) return;
+      const rest = { ...this.eq.custom };
+      delete rest[name];
+      this.eq.custom = rest;
+      this.eq.preset = matchPreset(this.eq.gains, rest);
+      this.snackbar('Deleted preset “' + name + '”');
+    },
+
+    // Live spectrum behind the response curve.
+    startSpectrum() {
+      this.stopSpectrum();
+      const canvas = document.getElementById('eq-spectrum');
+      const reduced = document.documentElement.classList.contains('reduce-motion');
+      if (!canvas || reduced || !equalizer || !equalizer.connected || !this.isPlaying || this.ytMode) return;
+      const g = canvas.getContext('2d');
+      const bins = new Uint8Array(equalizer.binCount);
+      const draw = () => {
+        spectrumFrame = requestAnimationFrame(draw);
+        if (!equalizer.spectrum(bins)) return;
+        const { width: w, height: h } = canvas;
+        g.clearRect(0, 0, w, h);
+        g.fillStyle = getComputedStyle(canvas).color;
+        g.globalAlpha = 0.3;
+        const nyquist = equalizer.ctx.sampleRate / 2;
+        const bars = 48;
+        for (let i = 0; i < bars; i++) {
+          // Log-spaced bars so the low end is not squeezed into the first few pixels.
+          const lo = 20 * Math.pow(1000, i / bars),
+            hi = 20 * Math.pow(1000, (i + 1) / bars);
+          const a = Math.floor((lo / nyquist) * bins.length),
+            b = Math.max(a + 1, Math.floor((hi / nyquist) * bins.length));
+          let peak = 0;
+          for (let k = a; k < b && k < bins.length; k++) peak = Math.max(peak, bins[k]);
+          const bh = (peak / 255) * h;
+          g.fillRect((i * w) / bars + 1, h - bh, w / bars - 2, bh);
+        }
+      };
+      draw();
+    },
+    stopSpectrum() {
+      if (spectrumFrame) cancelAnimationFrame(spectrumFrame);
+      spectrumFrame = 0;
     },
 
     // ================================================================= lyrics
@@ -1156,7 +1376,10 @@ function initAlpineApp() {
           continue;
         }
         const delta = hexToHsl(accent).h - DEFAULT_SEED_HUE;
-        root.style.setProperty(prop, 'light-dark(' + rotateHex(pair[0], delta) + ', ' + rotateHex(pair[1], delta) + ')');
+        const light = rotateHex(pair[0], delta),
+          darkValue = rotateHex(pair[1], delta);
+        // Safari before 17.5 has no light-dark(): hand it the side that is active.
+        root.style.setProperty(prop, LIGHT_DARK ? 'light-dark(' + light + ', ' + darkValue + ')' : dark ? darkValue : light);
       }
       const meta = document.querySelectorAll('meta[name="theme-color"]');
       meta.forEach((m) =>
@@ -1329,7 +1552,7 @@ function initAlpineApp() {
             const i = document.createElement('input');
             i.type = 'file';
             i.multiple = true;
-            i.accept = 'audio/*';
+            i.accept = 'audio/*,.zip,application/zip';
             i.onchange = () => this.importFiles(i.files);
             i.click();
           }

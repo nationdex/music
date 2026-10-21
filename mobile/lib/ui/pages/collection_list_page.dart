@@ -73,7 +73,11 @@ class _CollectionListPageState extends State<CollectionListPage> {
           actions: [
             IconButton(
               tooltip: lib.sortAsc ? 'Sort descending' : 'Sort ascending',
-              icon: AnimatedRotation(turns: lib.sortAsc ? 0 : 0.5, duration: const Duration(milliseconds: 200), child: const Icon(Icons.arrow_upward_rounded)),
+              icon: AnimatedRotation(
+                turns: lib.sortAsc ? 0 : 0.5,
+                duration: const Duration(milliseconds: 200),
+                child: const Icon(Icons.arrow_upward_rounded),
+              ),
               onPressed: lib.toggleSortDirection,
             ),
             ActionMenuButton(
@@ -90,7 +94,11 @@ class _CollectionListPageState extends State<CollectionListPage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: FilledButton.tonalIcon(icon: const Icon(Icons.add_rounded), label: const Text('New playlist'), onPressed: () => createPlaylistFlow(context)),
+              child: FilledButton.tonalIcon(
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('New playlist'),
+                onPressed: () => createPlaylistFlow(context),
+              ),
             ),
           ),
         Expanded(child: _body(lib, items, twoPane)),
@@ -105,11 +113,23 @@ class _CollectionListPageState extends State<CollectionListPage> {
             ? Row(
                 children: [
                   SizedBox(width: 400, child: list),
-                  VerticalDivider(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                  VerticalDivider(
+                    width: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                   Expanded(
                     child: _selectedId == null
-                        ? const EmptyState(title: 'Nothing selected', message: 'Select something from the list to be shown here', icon: Icons.touch_app_outlined)
-                        : CollectionDetailView(kind: widget.kind, id: _selectedId!, embedded: true, onClose: () => setState(() => _selectedId = null)),
+                        ? const EmptyState(
+                            title: 'Nothing selected',
+                            message: 'Select something from the list to be shown here',
+                            icon: Icons.touch_app_outlined,
+                          )
+                        : CollectionDetailView(
+                            kind: widget.kind,
+                            id: _selectedId!,
+                            embedded: true,
+                            onClose: () => setState(() => _selectedId = null),
+                          ),
                   ),
                 ],
               )
@@ -120,7 +140,10 @@ class _CollectionListPageState extends State<CollectionListPage> {
 
   Widget _body(LibraryController lib, List<Collection> items, bool twoPane) {
     if (items.isEmpty && widget.kind != CollectionKind.playlists) {
-      return EmptyState(title: 'No $_noun yet', message: 'Add music to your library to see it here');
+      return EmptyState(
+        title: 'No $_noun yet',
+        message: 'Add music to your library to see it here',
+      );
     }
     return switch (widget.kind) {
       CollectionKind.albums || CollectionKind.artists => _grid(items, twoPane),
@@ -137,23 +160,36 @@ class _CollectionListPageState extends State<CollectionListPage> {
         final columns = (c.maxWidth / 170).floor().clamp(2, 6);
         return GridView.builder(
           padding: listPadding(context).copyWith(left: 16, right: 16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: columns, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: artists ? 0.86 : 0.8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: artists ? 0.86 : 0.8,
+          ),
           itemCount: items.length,
           itemBuilder: (_, i) {
             final item = items[i];
             final selected = twoPane && item.id == _selectedId;
             return Material(
-              color: selected ? scheme.surfaceContainerHigh : (artists ? Colors.transparent : scheme.surfaceContainerHigh),
+              color: selected
+                  ? scheme.surfaceContainerHigh
+                  : (artists
+                        ? Colors.transparent
+                        : scheme.surfaceContainerHigh),
               borderRadius: BorderRadius.circular(16),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () => _open(item, twoPane),
                 child: Column(
-                  crossAxisAlignment: artists ? CrossAxisAlignment.center : CrossAxisAlignment.stretch,
+                  crossAxisAlignment: artists
+                      ? CrossAxisAlignment.center
+                      : CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: Padding(
-                        padding: artists ? const EdgeInsets.all(8) : EdgeInsets.zero,
+                        padding: artists
+                            ? const EdgeInsets.all(8)
+                            : EdgeInsets.zero,
                         child: LayoutBuilder(
                           builder: (_, box) => Center(
                             child: Artwork(
@@ -161,19 +197,41 @@ class _CollectionListPageState extends State<CollectionListPage> {
                               size: box.biggest.shortestSide,
                               radius: 0,
                               circle: artists,
-                              icon: artists ? Icons.person_rounded : Icons.album_rounded,
+                              icon: artists
+                                  ? Icons.person_rounded
+                                  : Icons.album_rounded,
                             ),
                           ),
                         ),
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       child: Column(
-                        crossAxisAlignment: artists ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+                        crossAxisAlignment: artists
+                            ? CrossAxisAlignment.center
+                            : CrossAxisAlignment.start,
                         children: [
-                          Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                          if (!artists) Text(item.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                          Text(
+                            item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (!artists)
+                            Text(
+                              item.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -201,10 +259,19 @@ class _CollectionListPageState extends State<CollectionListPage> {
             color: selected ? scheme.secondaryContainer : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             child: ListTile(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               leading: pl.artworkTrack != null
                   ? Artwork(track: pl.artworkTrack, size: 44, circle: true)
-                  : CircleAvatar(backgroundColor: scheme.surfaceContainerHighest, child: Icon(pl.isFavorites ? Icons.favorite_rounded : Icons.queue_music_rounded)),
+                  : CircleAvatar(
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      child: Icon(
+                        pl.isFavorites
+                            ? Icons.favorite_rounded
+                            : Icons.queue_music_rounded,
+                      ),
+                    ),
               title: Text(pl.name),
               subtitle: Text(pl.meta),
               textColor: selected ? scheme.onSecondaryContainer : null,

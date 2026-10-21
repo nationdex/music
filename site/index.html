@@ -1,42 +1,98 @@
 <!doctype html>
-<html lang="en" class="dark" un-cloak>
+<html lang="en" class="dark">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Adi Music - A music player built around your library</title>
-    <meta name="description" content="Play your local music in the browser with playlists, equalizer, playback speed, and offline listening. No uploads, no sign-up." />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
-    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#271816" media="(prefers-color-scheme: dark)" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Adi Music" />
-    <meta property="og:title" content="Adi Music - A music player built around your library" />
-    <meta property="og:description" content="Play your local music in the browser with playlists, equalizer, playback speed, and offline listening." />
-    <meta property="og:image" content="/images/icon-512.png" />
-    <meta name="twitter:card" content="summary" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="icon" type="image/png" sizes="64x64" href="/images/logo-64.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
-    <meta name="application-name" content="Adi Music" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Adi Music" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="msapplication-TileColor" content="#271816" />
-    <meta name="msapplication-tap-highlight" content="no" />
-    <link rel="preload" href="/fonts/MPLUSRounded1c-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="preload" href="/assets/vendor/unocss-reset.css" as="style" />
-    <link rel="stylesheet" href="/assets/app.css" />
-    <!-- UnoCSS runtime: generates the utility CSS in the browser (no build step). Order matters: config, preset, core. -->
-    <script src="/assets/uno.config.js"></script>
-    <script src="/assets/vendor/unocss-preset-wind4.js"></script>
-    <script src="/assets/vendor/unocss-runtime-core.js"></script>
-    <noscript><style>[un-cloak] { display: block; }</style></noscript>
+    <!--# set var="seo_title" value="Adi Music - A music player built around your library" -->
+    <!--# set var="seo_description" value="Free, open-source music player for the browser. Play your own files with synced lyrics, an equalizer, playlists and offline listening. No uploads, no sign-up." -->
+    <!--# set var="seo_path" value="/" -->
+    <!--# set var="seo_image_alt" value="Adi Music showing a library of albums with the player at the bottom of the screen." -->
+    <!--# include virtual="/partials/seo.html" -->
+    <!--# include virtual="/partials/head.html" -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "<!--# echo var="public_url" -->/#website",
+          "url": "<!--# echo var="public_url" -->/",
+          "name": "Adi Music",
+          "inLanguage": "en"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "<!--# echo var="public_url" -->/#app",
+          "name": "Adi Music",
+          "url": "<!--# echo var="public_url" -->/",
+          "description": "Free, open-source music player for the browser. Play your own audio files with synced lyrics, a 10-band equalizer, playlists and offline listening.",
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "Any modern browser, Android, iOS",
+          "isAccessibleForFree": true,
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "image": "<!--# echo var="public_url" -->/images/og.png",
+          "screenshot": "<!--# echo var="public_url" -->/images/player.webp",
+          "sameAs": ["https://github.com/nationdex/music"],
+          "featureList": [
+            "Plays your own MP3, M4A, FLAC, Ogg and WAV files",
+            "Library built from file tags: tracks, albums, artists, playlists",
+            "Synced lyrics",
+            "10-band equalizer with presets",
+            "Playback speed and queue",
+            "Works offline as an installable app"
+          ]
+        },
+        {
+                "@type": "FAQPage",
+                "@id": "<!--# echo var="public_url" -->/#faq",
+                "mainEntity": [
+                        {
+                                "@type": "Question",
+                                "name": "Is Adi Music free?",
+                                "acceptedAnswer": {
+                                        "@type": "Answer",
+                                        "text": "Yes. It is free and open source. There are no accounts, subscriptions or ads."
+                                }
+                        },
+                        {
+                                "@type": "Question",
+                                "name": "Are my files uploaded anywhere?",
+                                "acceptedAnswer": {
+                                        "@type": "Answer",
+                                        "text": "No. Your audio files, tags and cover art are stored in your browser and never leave your device. See the privacy page for exactly which requests the app makes."
+                                }
+                        },
+                        {
+                                "@type": "Question",
+                                "name": "Which audio formats work?",
+                                "acceptedAnswer": {
+                                        "@type": "Answer",
+                                        "text": "MP3, M4A and AAC, FLAC, Ogg and Opus, and WAV, as far as your browser can decode them. Tags and cover art are read from ID3, MP4 and Vorbis metadata. You can also import a ZIP of an album."
+                                }
+                        },
+                        {
+                                "@type": "Question",
+                                "name": "Does it work offline?",
+                                "acceptedAnswer": {
+                                        "@type": "Answer",
+                                        "text": "Yes. After the first visit the app loads without a connection, and your imported tracks play offline. Install it from your browser’s menu to use it like a native app. Lyrics and Discovery need a connection."
+                                }
+                        },
+                        {
+                                "@type": "Question",
+                                "name": "Where do the lyrics come from?",
+                                "acceptedAnswer": {
+                                        "@type": "Answer",
+                                        "text": "Adi Lyrics, with LRCLIB and LRC Mux as fallbacks. Time-synced lyrics scroll with the song when a source has them."
+                                }
+                        }
+                ]
+        }
+      ]
+    }
+    </script>
     <script src="/assets/js/theme.js"></script>
-    <script type="module" src="/assets/js/pwa.js"></script>
-    <script defer src="/assets/vendor/alpine-intersect.min.js"></script>
-    <script defer src="/assets/vendor/alpine.min.js"></script>
+    <script type="module" src="/assets/js/pwa.js?v=<!--# echo var="asset_v" -->"></script>
+    <script defer src="/assets/vendor/alpine-intersect.min.js?v=<!--# echo var="asset_v" -->"></script>
+    <script defer src="/assets/vendor/alpine.min.js?v=<!--# echo var="asset_v" -->"></script>
   </head>
 
   <body x-data="{ eq: [4, 3, 1, -1, -2, 0, 2, 4, 5, 6], speed: 1 }">
@@ -47,7 +103,7 @@
         <img src="/images/logo-64.png" width="24" height="24" alt="" class="size-6" />
         Adi Music
       </div>
-      <a href="https://github.com/adidotzip/music" rel="noopener noreferrer" target="_blank" aria-label="Source code on GitHub" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full">
+      <a href="https://github.com/nationdex/music" rel="noopener noreferrer" target="_blank" aria-label="Source code on GitHub" class="m3-button-base flex size-11 shrink-0 items-center justify-center rounded-full">
         <span class="button-content"><svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use href="#system-icon-github"></use></svg></span>
       </a>
       <a href="/library/tracks" class="m3-button-base outlined-button h-10 px-6 text-base max-sm:hidden"><span class="button-content">Open Player</span></a>
@@ -74,7 +130,10 @@
         <div class="product-stage relative min-w-0">
           <div class="product-glow"></div>
           <div class="product-frame">
-            <img src="/images/player.png" width="1200" height="720" alt="Adi Music showing a library of albums with the player at the bottom of the screen" class="product-image block h-auto w-full" fetchpriority="high" />
+            <picture>
+              <source type="image/webp" srcset="/images/player-600.webp 600w, /images/player.webp 1200w" sizes="(min-width: 1024px) 50vw, 100vw" />
+              <img src="/images/player.png" width="1200" height="720" alt="Adi Music showing a library of albums with the player at the bottom of the screen" class="product-image block h-auto w-full" fetchpriority="high" decoding="async" />
+            </picture>
           </div>
           <div class="product-chip product-chip-top">
             <div class="text-label-sm text-onSurfaceVariant">Adaptive interface</div>
@@ -211,6 +270,36 @@
         </ol>
         <p class="max-w-2xl text-center text-body-md text-onSurfaceVariant">Works in modern browsers on desktop, Android and iOS. Your files and playlists stay on your device.</p>
       </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="mktg-content-width gap-8" x-data="{ shown: false }" x-intersect.once.margin.-10%="shown = true">
+        <div class="reveal text-center" :class="{ 'is-in': shown }">
+          <div class="mb-2 text-label-lg font-medium text-primary">Questions</div>
+          <h2 class="mb-3 text-headline-md font-bold text-onSurface md:text-headline-lg">Good to know</h2>
+        </div>
+        <div class="reveal flex w-full max-w-3xl flex-col gap-3" :class="{ 'is-in': shown }">
+          <details class="how-it-works-card p-5">
+            <summary class="cursor-pointer text-title-md font-semibold text-onSurface">Is Adi Music free?</summary>
+            <p class="mt-3 text-body-md leading-relaxed text-onSurfaceVariant">Yes. It is free and open source. There are no accounts, subscriptions or ads.</p>
+          </details>
+          <details class="how-it-works-card p-5">
+            <summary class="cursor-pointer text-title-md font-semibold text-onSurface">Are my files uploaded anywhere?</summary>
+            <p class="mt-3 text-body-md leading-relaxed text-onSurfaceVariant">No. Your audio files, tags and cover art are stored in your browser and never leave your device. See the <a class="link text-primary" href="/privacy">privacy page</a> for exactly which requests the app makes.</p>
+          </details>
+          <details class="how-it-works-card p-5">
+            <summary class="cursor-pointer text-title-md font-semibold text-onSurface">Which audio formats work?</summary>
+            <p class="mt-3 text-body-md leading-relaxed text-onSurfaceVariant">MP3, M4A and AAC, FLAC, Ogg and Opus, and WAV, as far as your browser can decode them. Tags and cover art are read from ID3, MP4 and Vorbis metadata. You can also import a ZIP of an album.</p>
+          </details>
+          <details class="how-it-works-card p-5">
+            <summary class="cursor-pointer text-title-md font-semibold text-onSurface">Does it work offline?</summary>
+            <p class="mt-3 text-body-md leading-relaxed text-onSurfaceVariant">Yes. After the first visit the app loads without a connection, and your imported tracks play offline. Install it from your browser's menu to use it like a native app. Lyrics and Discovery need a connection.</p>
+          </details>
+          <details class="how-it-works-card p-5">
+            <summary class="cursor-pointer text-title-md font-semibold text-onSurface">Where do the lyrics come from?</summary>
+            <p class="mt-3 text-body-md leading-relaxed text-onSurfaceVariant">Adi Lyrics, with LRCLIB and LRC Mux as fallbacks. Time-synced lyrics scroll with the song when a source has them.</p>
+          </details>
+        </div>
+      </section>
     </main>
 
     <footer class="mt-14 w-full border-t border-outlineVariant bg-shadow/7 md:mt-32">
@@ -219,10 +308,10 @@
           <img src="/images/logo-64.png" width="24" height="24" alt="" class="size-5 opacity-60" /> Adi Music
         </div>
         <div class="flex items-center gap-6 text-body-md">
-          <a href="https://github.com/adidotzip/music" rel="noopener noreferrer" target="_blank" class="flex items-center gap-1.5 text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">
+          <a href="https://github.com/nationdex/music" rel="noopener noreferrer" target="_blank" class="flex items-center gap-1.5 text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">
             <svg class="size-4 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-github"></use></svg> Source code
           </a>
-          <a href="https://github.com/adidotzip/music#privacy" rel="noopener noreferrer" target="_blank" class="text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">Privacy</a>
+          <a href="/privacy" class="text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface">Privacy</a>
         </div>
       </div>
     </footer>

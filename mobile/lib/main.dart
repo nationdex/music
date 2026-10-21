@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'app.dart';
 import 'data/storage.dart';
+import 'services/discovery_service.dart';
 import 'state/audio_handler.dart';
 import 'state/library_controller.dart';
 import 'state/player_controller.dart';
@@ -21,7 +22,9 @@ Future<void> main() async {
   await library.load();
 
   // Ducking, interruptions (calls, other apps) and headphone unplug are handled by the music profile.
-  await (await AudioSession.instance).configure(const AudioSessionConfiguration.music());
+  await (await AudioSession.instance).configure(
+    const AudioSessionConfiguration.music(),
+  );
 
   final handler = await AudioService.init(
     builder: AdiAudioHandler.new,
@@ -34,8 +37,23 @@ Future<void> main() async {
     ),
   );
 
-  final player = PlayerController(library: library, settings: settings, handler: handler);
+  // One service for search and playback, so a blocked upload found by the player is hidden from search too.
+  final discovery = DiscoveryService();
+  final player = PlayerController(
+    library: library,
+    settings: settings,
+    discovery: discovery,
+    handler: handler,
+  );
   final glass = await detectGlassTier();
 
-  runApp(AdiMusicApp(settings: settings, library: library, player: player, glassTier: glass));
+  runApp(
+    AdiMusicApp(
+      settings: settings,
+      library: library,
+      player: player,
+      glassTier: glass,
+      discovery: discovery,
+    ),
+  );
 }

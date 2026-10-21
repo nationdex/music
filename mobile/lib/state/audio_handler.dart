@@ -21,15 +21,36 @@ class AdiAudioHandler extends BaseAudioHandler with SeekHandler {
   void bind(PlaybackActions actions) => _actions = actions;
 
   /// Publishes what is playing. Called when the track changes.
-  void publishItem({required String id, required String title, required String artist, required String album, Duration? duration, Uri? artUri}) {
-    mediaItem.add(MediaItem(id: id, title: title, artist: artist, album: album, duration: duration, artUri: artUri));
+  void publishItem({
+    required String id,
+    required String title,
+    required String artist,
+    required String album,
+    Duration? duration,
+    Uri? artUri,
+  }) {
+    mediaItem.add(
+      MediaItem(
+        id: id,
+        title: title,
+        artist: artist,
+        album: album,
+        duration: duration,
+        artUri: artUri,
+      ),
+    );
   }
 
   void clearItem() => mediaItem.add(null);
 
   /// Publishes transport state. The OS extrapolates the position from
   /// [position] and [speed], so this is only called on state changes.
-  void publishState({required bool playing, required bool loading, required Duration position, required double speed}) {
+  void publishState({
+    required bool playing,
+    required bool loading,
+    required Duration position,
+    required double speed,
+  }) {
     playbackState.add(
       PlaybackState(
         controls: [
@@ -37,9 +58,15 @@ class AdiAudioHandler extends BaseAudioHandler with SeekHandler {
           playing ? MediaControl.pause : MediaControl.play,
           MediaControl.skipToNext,
         ],
-        systemActions: const {MediaAction.seek, MediaAction.seekForward, MediaAction.seekBackward},
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
         androidCompactActionIndices: const [0, 1, 2],
-        processingState: loading ? AudioProcessingState.loading : AudioProcessingState.ready,
+        processingState: loading
+            ? AudioProcessingState.loading
+            : AudioProcessingState.ready,
         playing: playing,
         updatePosition: position,
         speed: speed,
@@ -48,7 +75,9 @@ class AdiAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void publishIdle() {
-    playbackState.add(PlaybackState(processingState: AudioProcessingState.idle, playing: false));
+    playbackState.add(
+      PlaybackState(processingState: AudioProcessingState.idle, playing: false),
+    );
   }
 
   @override

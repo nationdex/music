@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:adi_music/state/eq_engine.dart';
 import 'package:just_audio/just_audio.dart';
 
 /// A just_audio player that records calls and lets a test drive its streams.
@@ -34,9 +35,20 @@ class FakeAudioPlayer extends Fake implements AudioPlayer {
   }
 
   @override
-  Future<Duration?> setFilePath(String filePath, {Duration? initialPosition, bool preload = true, dynamic tag}) => _load('file:$filePath');
+  Future<Duration?> setFilePath(
+    String filePath, {
+    Duration? initialPosition,
+    bool preload = true,
+    dynamic tag,
+  }) => _load('file:$filePath');
   @override
-  Future<Duration?> setUrl(String url, {Map<String, String>? headers, Duration? initialPosition, bool preload = true, dynamic tag}) => _load('url:$url');
+  Future<Duration?> setUrl(
+    String url, {
+    Map<String, String>? headers,
+    Duration? initialPosition,
+    bool preload = true,
+    dynamic tag,
+  }) => _load('url:$url');
 
   @override
   Future<void> play() async => calls.add('play');
@@ -45,7 +57,8 @@ class FakeAudioPlayer extends Fake implements AudioPlayer {
   @override
   Future<void> stop() async => calls.add('stop');
   @override
-  Future<void> seek(Duration? position, {int? index}) async => calls.add('seek:${position?.inMilliseconds}');
+  Future<void> seek(Duration? position, {int? index}) async =>
+      calls.add('seek:${position?.inMilliseconds}');
   @override
   Future<void> setSpeed(double speed) async {
     this.speed = speed;
@@ -64,5 +77,28 @@ class FakeAudioPlayer extends Fake implements AudioPlayer {
   Future<void> dispose() async => calls.add('dispose');
 
   /// Emulates the platform reporting playback state.
-  void emit({required bool playing, ProcessingState processing = ProcessingState.ready}) => state.add(PlayerState(playing, processing));
+  void emit({
+    required bool playing,
+    ProcessingState processing = ProcessingState.ready,
+  }) => state.add(PlayerState(playing, processing));
+}
+
+/// Records what the player asks of the device's equalizer.
+class FakeEqEngine implements EqEngine {
+  @override
+  final pipeline = AudioPipeline();
+  @override
+  double minDb = -15, maxDb = 15;
+  List<double> gains = const [];
+  bool enabled = true;
+  double boost = 0;
+
+  @override
+  Future<List<double>?> init() async => const [60, 230, 910, 3600, 14000];
+  @override
+  Future<void> setBandGains(List<double> g) async => gains = g;
+  @override
+  Future<void> setEnabled(bool on) async => enabled = on;
+  @override
+  Future<void> setBoostDb(double db) async => boost = db;
 }

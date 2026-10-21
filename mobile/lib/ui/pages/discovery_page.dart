@@ -35,7 +35,9 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _runSearch('Top Hits', initial: true));
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _runSearch('Top Hits', initial: true),
+    );
   }
 
   @override
@@ -61,13 +63,16 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
         try {
           rows = await service.youtubeSearch(settings.serverUrl, term);
         } on YouTubeUnavailable {
-          rows = null; // no server, no key, or quota spent: fall back to previews
+          rows =
+              null; // no server, no key, or quota spent: fall back to previews
         }
       }
       rows ??= await service.itunesSearch(term);
       if (!mounted || token != _token) return;
       setState(() {
-        _source = rows!.isNotEmpty && rows.first.source == TrackSource.youtube ? TrackSource.youtube : TrackSource.remote;
+        _source = rows!.isNotEmpty && rows.first.source == TrackSource.youtube
+            ? TrackSource.youtube
+            : TrackSource.remote;
         _results = rows;
       });
     } catch (e) {
@@ -82,12 +87,19 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
   }
 
   bool _isSaved(LibraryController lib, DiscoveryItem item) => lib.tracks.any(
-    (t) => (item.videoId != null && t.videoId == item.videoId) || (!t.stored && t.name == item.name && t.artist == item.artist) || t.id == item.trackId,
+    (t) =>
+        (item.videoId != null && t.videoId == item.videoId) ||
+        (!t.stored && t.name == item.name && t.artist == item.artist) ||
+        t.id == item.trackId,
   );
 
   Track _trackFor(LibraryController lib, DiscoveryItem item) {
     for (final t in lib.tracks) {
-      if (t.id == item.trackId || (item.videoId != null && t.videoId == item.videoId) || (!t.stored && t.name == item.name && t.artist == item.artist)) return t;
+      if (t.id == item.trackId ||
+          (item.videoId != null && t.videoId == item.videoId) ||
+          (!t.stored && t.name == item.name && t.artist == item.artist)) {
+        return t;
+      }
     }
     return item.toTrack();
   }
@@ -106,11 +118,16 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     final player = context.read<PlayerController>();
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final current = context.select<PlayerController, Track?>((p) => p.currentTrack);
+    final current = context.select<PlayerController, Track?>(
+      (p) => p.currentTrack,
+    );
     final playing = context.select<PlayerController, bool>((p) => p.isPlaying);
 
     bool itemPlaying(DiscoveryItem i) =>
-        current != null && playing && ((i.videoId != null && current.videoId == i.videoId) || (current.name == i.name && current.artist == i.artist));
+        current != null &&
+        playing &&
+        ((i.videoId != null && current.videoId == i.videoId) ||
+            (current.name == i.name && current.artist == i.artist));
 
     final youtubeWanted = settings.settings.discoverySource != 'itunes';
 
@@ -122,7 +139,10 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Align(alignment: Alignment.centerLeft, child: Text('Discovery', style: text.titleLarge)),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Discovery', style: text.titleLarge),
+              ),
             ),
             LibrarySearchBar(
               controller: _search,
@@ -131,15 +151,30 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
               onChanged: (_) {},
               onSubmitted: _runSearch,
               actions: [
-                IconButton(tooltip: 'Search', icon: const Icon(Icons.search_rounded), onPressed: () => _runSearch(_search.text)),
+                IconButton(
+                  tooltip: 'Search',
+                  icon: const Icon(Icons.search_rounded),
+                  onPressed: () => _runSearch(_search.text),
+                ),
                 ActionMenuButton(
                   actionsBuilder: (_) => [
                     MenuAction(
                       icon: Icons.cached_rounded,
-                      label: youtubeWanted ? 'Use Apple previews' : 'Use YouTube',
+                      label: youtubeWanted
+                          ? 'Use Apple previews'
+                          : 'Use YouTube',
                       onSelected: () {
-                        settings.update(settings.settings.copyWith(discoverySource: youtubeWanted ? 'itunes' : 'youtube'));
-                        showSnack(context, 'Discovery source changed. Search again.');
+                        settings.update(
+                          settings.settings.copyWith(
+                            discoverySource: youtubeWanted
+                                ? 'itunes'
+                                : 'youtube',
+                          ),
+                        );
+                        showSnack(
+                          context,
+                          'Discovery source changed. Search again.',
+                        );
                       },
                     ),
                   ],
@@ -151,13 +186,24 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: [CircularProgressIndicator(color: scheme.primary), const SizedBox(height: 16), Text('Searching catalog...', style: text.titleMedium)],
+                        children: [
+                          CircularProgressIndicator(color: scheme.primary),
+                          const SizedBox(height: 16),
+                          Text('Searching catalog...', style: text.titleMedium),
+                        ],
                       ),
                     )
                   : _error.isNotEmpty
-                  ? EmptyState(title: _error, message: 'Check your connection and try again.', icon: Icons.cloud_off_rounded)
+                  ? EmptyState(
+                      title: _error,
+                      message: 'Check your connection and try again.',
+                      icon: Icons.cloud_off_rounded,
+                    )
                   : _results.isEmpty
-                  ? const EmptyState(title: 'No results found', icon: Icons.search_rounded)
+                  ? const EmptyState(
+                      title: 'No results found',
+                      icon: Icons.search_rounded,
+                    )
                   : ListView.builder(
                       padding: listPadding(context),
                       itemCount: _results.length + 1,
@@ -170,11 +216,31 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                               children: [
                                 Row(
                                   children: [
-                                    Expanded(child: Text(_title, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700))),
-                                    Text('${_results.length} songs', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant.withValues(alpha: 0.7))),
+                                    Expanded(
+                                      child: Text(
+                                        _title,
+                                        style: text.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${_results.length} songs',
+                                      style: text.bodySmall?.copyWith(
+                                        color: scheme.onSurfaceVariant
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                Text(_source == TrackSource.youtube ? 'Full tracks from YouTube' : '30-second Apple previews', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                                Text(
+                                  _source == TrackSource.youtube
+                                      ? 'Full tracks from YouTube'
+                                      : '30-second Apple previews',
+                                  style: text.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -183,35 +249,77 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
                         final saved = _isSaved(lib, item);
                         final isPlaying = itemPlaying(item);
                         return InkWell(
-                          onTap: () => player.playFromList([for (final r in _results) _trackFor(lib, r)], i - 1),
+                          onTap: () => player.playFromList([
+                            for (final r in _results) _trackFor(lib, r),
+                          ], i - 1),
                           child: SizedBox(
                             height: 72,
                             child: Padding(
-                              padding: const EdgeInsets.only(left: 16, right: 8),
+                              padding: const EdgeInsets.only(
+                                left: 16,
+                                right: 8,
+                              ),
                               child: Row(
                                 children: [
                                   Artwork(
                                     track: item.toTrack(),
                                     size: 48,
-                                    overlay: isPlaying ? const NowPlayingOverlay(playing: true) : null,
+                                    overlay: isPlaying
+                                        ? const NowPlayingOverlay(playing: true)
+                                        : null,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.titleSmall?.copyWith(color: isPlaying ? scheme.primary : scheme.onSurface)),
-                                        Text(item.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                                        Text(
+                                          item.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: text.titleSmall?.copyWith(
+                                            color: isPlaying
+                                                ? scheme.primary
+                                                : scheme.onSurface,
+                                          ),
+                                        ),
+                                        Text(
+                                          item.artist,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: text.bodySmall?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
                                   IconButton(
-                                    tooltip: saved ? 'In your library' : 'Add to library',
-                                    icon: Icon(saved ? Icons.check_rounded : Icons.add_rounded),
-                                    onPressed: saved ? null : () => _save(lib, item),
+                                    tooltip: saved
+                                        ? 'In your library'
+                                        : 'Add to library',
+                                    icon: Icon(
+                                      saved
+                                          ? Icons.check_rounded
+                                          : Icons.add_rounded,
+                                    ),
+                                    onPressed: saved
+                                        ? null
+                                        : () => _save(lib, item),
                                   ),
-                                  SizedBox(width: 48, child: Text(formatTime(item.duration), textAlign: TextAlign.right, style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant))),
+                                  SizedBox(
+                                    width: 48,
+                                    child: Text(
+                                      formatTime(item.duration),
+                                      textAlign: TextAlign.right,
+                                      style: text.bodyMedium?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),

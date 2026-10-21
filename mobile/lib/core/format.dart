@@ -10,7 +10,8 @@ String formatTime(num? seconds) {
   return h > 0 ? '$h:${pad(m)}:${pad(r)}' : '${pad(m)}:${pad(r)}';
 }
 
-String plural(int n, String one, [String? many]) => '$n ${n == 1 ? one : (many ?? '${one}s')}';
+String plural(int n, String one, [String? many]) =>
+    '$n ${n == 1 ? one : (many ?? '${one}s')}';
 
 /// Stable short id from a string (djb2), identical to the web build's `slugId`.
 String slugId(String s) {

@@ -10,7 +10,7 @@
     <svg class="size-20 fill-current opacity-60" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-trayFull"></use></svg>
     <h2 class="text-title-lg">Your library is empty</h2>
     <p class="text-body-md text-onSurfaceVariant">Import some music or save tracks from Discovery and they will appear here.</p>
-    <div class="mt-2 flex gap-2">
+    <div class="mt-2 flex flex-wrap justify-center gap-2">
       <a href="/library/tracks" @click.prevent="go('/library/tracks')" class="m3-button-base filled-button h-10 px-6 text-base"><span class="button-content">Import tracks</span></a>
       <a href="/discovery" @click.prevent="go('/discovery')" class="m3-button-base outlined-button h-10 px-6 text-base"><span class="button-content"><svg class="size-6 fill-current" viewBox="0 0 24 24" role="presentation"><use href="#system-icon-compass"></use></svg>Explore music</span></a>
     </div>

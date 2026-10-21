@@ -92,7 +92,8 @@ class AppSettings {
   /// Tolerant of missing keys and of backups exported by the web build.
   factory AppSettings.fromJson(Map<String, dynamic> j) {
     const d = AppSettings();
-    String s(String k, String fallback) => j[k] is String ? j[k] as String : fallback;
+    String s(String k, String fallback) =>
+        j[k] is String ? j[k] as String : fallback;
     bool b(String k, bool fallback) => j[k] is bool ? j[k] as bool : fallback;
     return AppSettings(
       lyricsProvider: s('lyricsProvider', d.lyricsProvider),
@@ -104,7 +105,9 @@ class AppSettings {
       volumeInPlayer: b('volumeInPlayer', d.volumeInPlayer),
       preservePitch: b('preservePitch', d.preservePitch),
       discoverySource: s('discoverySource', d.discoverySource),
-      volume: j['volume'] is num ? (j['volume'] as num).toDouble().clamp(0.0, 1.0) : d.volume,
+      volume: j['volume'] is num
+          ? (j['volume'] as num).toDouble().clamp(0.0, 1.0)
+          : d.volume,
       serverUrl: s('serverUrl', d.serverUrl),
       glass: s('glass', d.glass),
     );
