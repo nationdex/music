@@ -14,7 +14,7 @@ export const DEFAULT_SETTINGS = {
 };
 
 // ------------------------------------------------------------ upstream APIs
-// nginx proxies these prefixes (see deploy/nginx.conf); the YouTube key is
+// nginx proxies these prefixes (see deploy/nginx.conf); no API key is needed:
 // injected there and never reaches the browser.
 
 export const API = {
@@ -22,7 +22,7 @@ export const API = {
   lrclib: '/up/lrclib',
   lrcmux: '/up/lrcmux',
   itunes: '/up/itunes',
-  youtube: '/up/youtube',
+  audius: '/up/audius',
   innertube: '/up/innertube'
 };
 export const ADI_PROVIDERS = [

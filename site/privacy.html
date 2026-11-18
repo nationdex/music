@@ -23,7 +23,7 @@
       }
     }
     </script>
-    <script src="/assets/js/theme.js"></script>
+    <script src="/assets/js/theme.js?v=<!--# echo var="asset_v" -->"></script>
   </head>
 
   <body>
@@ -52,7 +52,7 @@
       <p class="text-body-md leading-relaxed text-onSurfaceVariant">These go through this site's own server, which forwards them. The services see this server's address, not yours.</p>
       <ul class="flex list-disc flex-col gap-2 pl-6 text-body-md leading-relaxed text-onSurfaceVariant">
         <li><strong class="text-onSurface">Lyrics.</strong> When a track plays, its title, artist, album and length are sent to Adi Lyrics, LRCLIB and LRC Mux to find lyrics.</li>
-        <li><strong class="text-onSurface">Discovery.</strong> What you type in Discovery goes to YouTube (its Data API, or YouTube's own web API as a fallback) or to Apple's iTunes Search.</li>
+        <li><strong class="text-onSurface">Discovery.</strong> What you type in Discovery goes to YouTube (YouTube's own web API) or Audius's public API or to Apple's iTunes Search.</li>
       </ul>
       <p class="text-body-md leading-relaxed text-onSurfaceVariant">These go straight from your browser:</p>
       <ul class="flex list-disc flex-col gap-2 pl-6 text-body-md leading-relaxed text-onSurfaceVariant">

@@ -3,7 +3,7 @@
 # ==========================================================================
 
 # --- Secrets and local configuration -----------------------------------------
-# Holds the YouTube Data API key. Never commit.
+# Local server settings. Never commit.
 deploy/adimusic.env
 *.env
 .env

@@ -8,18 +8,18 @@
     <!--# include virtual="/partials/seo.html" -->
     <!--# include virtual="/partials/head.html" -->
     <!-- The entry imports these; preloading them lets the browser fetch the whole graph at once instead of one level at a time. -->
-    <link rel="modulepreload" href="/assets/js/config.js" />
-    <link rel="modulepreload" href="/assets/js/db.js" />
-    <link rel="modulepreload" href="/assets/js/eq.js" />
-    <link rel="modulepreload" href="/assets/js/lyrics.js" />
-    <link rel="modulepreload" href="/assets/js/palette.js" />
-    <link rel="modulepreload" href="/assets/js/presence.js" />
-    <link rel="modulepreload" href="/assets/js/pwa.js" />
-    <link rel="modulepreload" href="/assets/js/router.js" />
-    <link rel="modulepreload" href="/assets/js/sources.js" />
-    <link rel="modulepreload" href="/assets/js/tags.js" />
-    <link rel="modulepreload" href="/assets/js/util.js" />
-    <link rel="modulepreload" href="/assets/js/zip.js" />
+    <link rel="modulepreload" href="/assets/js/config.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/db.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/equalizer.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/lyrics.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/palette.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/presence.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/pwa.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/router.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/sources.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/tagreader.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/util.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/zip.js?v=<!--# echo var="asset_v" -->" />
     <script type="module" src="/assets/js/app.js?v=<!--# echo var="asset_v" -->"></script>
     <script defer src="/assets/vendor/alpine-persist.min.js?v=<!--# echo var="asset_v" -->"></script>
     <script defer src="/assets/vendor/alpine-anchor.min.js?v=<!--# echo var="asset_v" -->"></script>

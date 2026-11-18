@@ -1,7 +1,7 @@
-// Pure-logic tests for site/assets/js/eq.js. Run: node --test tests/js/
+// Pure-logic tests for site/assets/js/equalizer.js. Run: node --test tests/js/
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { EQ_FREQS, EQ_PRESETS, autoPreamp, clampDb, curvePath, defaultEq, effectivePreamp, eqIsActive, logFreqs, matchPreset, normalizeEq, responseDb } from '../../site/assets/js/eq.js';
+import { EQ_FREQS, EQ_PRESETS, autoPreamp, clampDb, curvePath, defaultEq, effectivePreamp, eqIsActive, logFreqs, matchPreset, normalizeEq, responseDb } from '../../site/assets/js/equalizer.js';
 
 test('every preset has ten bands inside the slider range', () => {
   for (const [name, gains] of Object.entries(EQ_PRESETS)) {

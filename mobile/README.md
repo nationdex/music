@@ -15,16 +15,15 @@ flutter build apk                             # Android
 flutter build ios                             # iOS (macOS with Xcode only)
 ```
 
-YouTube search needs an Adi Music server (the nginx in `../deploy`), because the API key
-must not ship inside an app. Set it in Settings > Discovery, or at build time:
+Search can use an Adi Music server (the nginx in `../deploy`) as a caching proxy. Set it in Settings > Discovery, or at build time:
 
 ```bash
 flutter run --dart-define=ADI_SERVER_URL=https://music.example.com
 ```
 
-Without a server, or when the server's YouTube quota is spent, the app searches YouTube through
-Innertube (the API youtube.com itself uses; no key, no quota) directly. Apple previews are the
-last fallback. Lyrics providers and iTunes are keyless, so the app calls them directly.
+Without a server, or when the server's proxies fail, the app searches YouTube through
+Innertube (the API youtube.com itself uses; no key, no quota) directly, then Audius (full tracks over HTTP, played with just_audio). Apple previews are
+the last fallback. Lyrics providers and iTunes are keyless, so the app calls them directly.
 When YouTube refuses to embed a video (errors 100, 101, 150) the player tries another upload
 of the same song before skipping.
 

@@ -18,7 +18,7 @@ import {
   matchPreset,
   normalizeEq,
   responseDb
-} from './eq.js';
+} from './equalizer.js';
 import { idbAll, idbClear, idbDelete, idbGet, idbPut } from './db.js';
 import { parseLRC, parseTTML, resolveLyrics } from './lyrics.js';
 import { DEFAULT_SEED_HUE, DEFAULT_TOKENS, hexToHsl, rotateHex } from './palette.js';
@@ -26,7 +26,7 @@ import { buildPresence, presence } from './presence.js';
 import { pwa } from './pwa.js';
 import { resolveRoute } from './router.js';
 import { YTBridge, blockedVideos, cleanYouTubeMeta, findYouTubeAlternatives, itunesSearch, youtubeSearch } from './sources.js';
-import { compressArtwork, probeDuration, readTags } from './tags.js';
+import { compressArtwork, probeDuration, readTags } from './tagreader.js';
 import { slugId } from './util.js';
 import { ZipReader, baseName, isZipFile, mimeFor } from './zip.js';
 
@@ -974,7 +974,7 @@ function initAlpineApp() {
       this.ytMode = true;
       this.isPlaying = true;
       try {
-        await YTBridge.load();
+        await YTBridge.load(track.videoId);
         if (!this.ytMode || this.currentTrack !== track) return;
         YTBridge.loadVideo(track.videoId);
         YTBridge.setVolume(Math.round(this.volume * 100));
@@ -1711,13 +1711,26 @@ function initAlpineApp() {
           try {
             rows = await youtubeSearch(term, 24);
           } catch (e) {
-            if (!e.status) throw e; /* no key / quota spent: fall back to previews */
+            if (!e.status) throw e; /* every keyless source failed: fall back to previews */
           }
         }
         if (rows) {
           this.source = 'youtube';
           this.results = rows.map((r) => {
             const m = cleanYouTubeMeta(r.title, r.channel);
+            if (r.stream) {
+              // Audius: a full track over plain HTTP, played by the audio element like a preview.
+              return {
+                id: r.id,
+                name: r.title,
+                artist: r.channel,
+                album: 'Audius',
+                artwork: r.artwork,
+                duration: r.duration || 0,
+                source: 'remote',
+                previewUrl: r.stream
+              };
+            }
             return {
               id: r.id,
               videoId: r.id,

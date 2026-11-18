@@ -105,7 +105,7 @@
       <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
         <div class="min-w-0">
           <div>Discovery source</div>
-          <div class="text-body-sm text-onSurfaceVariant">YouTube plays full tracks. Apple plays 30-second previews.</div>
+          <div class="text-body-sm text-onSurfaceVariant">YouTube and Audius play full tracks. Apple plays 30-second previews.</div>
         </div>
         <div x-data="m3Select({ get: () => settings.discoverySource, set: (v) => { settings.discoverySource = v; persistSettings(); }, options: [['youtube','YouTube'],['itunes','Apple previews']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
       </div>

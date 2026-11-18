@@ -38,7 +38,7 @@
         <h2 class="text-title-lg font-bold text-onSurface" x-text="title"></h2>
         <span class="text-body-sm text-onSurfaceVariant/70" x-text="results.length + ' songs'"></span>
       </div>
-      <p class="text-body-sm text-onSurfaceVariant" x-text="source === 'youtube' ? 'Full tracks from YouTube' : '30-second Apple previews'"></p>
+      <p class="text-body-sm text-onSurfaceVariant" x-text="source === 'youtube' ? 'Full tracks from YouTube and Audius' : '30-second Apple previews'"></p>
       <div class="flex flex-col">
         <template x-for="(item, i) in results" :key="item.id || i">
           <div class="track-item-container interactable group h-18 shrink-0 rounded-lg text-left text-onSurfaceVariant" role="button" tabindex="0" @click="play(item)" @keydown.enter="play(item)">

@@ -2,9 +2,7 @@
 library;
 
 /// Upstream endpoints. Lyrics providers and iTunes are keyless, so the app
-/// calls them directly. YouTube needs an API key, which must never ship inside
-/// an app binary: the app talks to a server (see [AppConfig.defaultServerUrl])
-/// that appends the key, exactly like the web build's `/up/youtube` proxy.
+/// calls them directly. YouTube search goes through Innertube, which needs no key.
 class Endpoints {
   const Endpoints._();
 

@@ -1,9 +1,8 @@
 /// Discovery search. Ported from site/assets/js/sources.js.
 ///
-/// YouTube goes through an Adi Music server (the nginx in `deploy/`), which adds
-/// the API key; the key never ships in the app. When that is unavailable, quota-spent or
-/// not configured, the app asks Innertube directly. Apple previews are keyless and
-/// are called directly.
+/// No API key anywhere. YouTube is searched through Innertube (the API youtube.com itself
+/// uses) directly, then Audius (full tracks over plain HTTP, played by the audio player like a
+/// preview); Apple previews are the keyless last resort.
 library;
 
 import 'dart:convert';
@@ -13,7 +12,7 @@ import 'package:http/http.dart' as http;
 import '../core/config.dart';
 import '../data/models.dart';
 
-/// Thrown when YouTube search fails on every source (Data API through the server, then Innertube).
+/// Thrown when YouTube search fails on every source (Innertube, Audius).
 /// The caller falls back to Apple previews.
 class YouTubeUnavailable implements Exception {
   const YouTubeUnavailable(this.reason, {this.status});
@@ -80,14 +79,33 @@ List<YouTubeRow> parseInnertubeSearch(Object? data) {
   return out;
 }
 
-/// `PT3M25S` -> 205.
-int isoSeconds(String? iso) {
-  int part(String unit) {
-    final m = RegExp('(\\d+)$unit').firstMatch(iso ?? '');
-    return m == null ? 0 : int.parse(m.group(1)!);
+/// Tracks from an Audius `/v1/tracks/search` response. Locked tracks are dropped.
+List<DiscoveryItem> parseAudiusSearch(Object? data) {
+  final out = <DiscoveryItem>[];
+  if (data is! Map) return out;
+  for (final t in (data['data'] as List?) ?? const []) {
+    if (t is! Map || t['id'] is! String) continue;
+    if (t['is_streamable'] == false) continue;
+    if ((t['access'] as Map?)?['stream'] == false) continue;
+    final id = t['id'] as String;
+    final art = t['artwork'] as Map?;
+    out.add(
+      DiscoveryItem(
+        id: 'au:$id',
+        name: (t['title'] as String?) ?? '',
+        artist: ((t['user'] as Map?)?['name'] as String?) ?? '',
+        album: 'Audius',
+        artwork:
+            (art?['480x480'] ?? art?['1000x1000'] ?? art?['150x150'])
+                as String?,
+        duration: ((t['duration'] as num?) ?? 0).toDouble(),
+        source: TrackSource.remote,
+        previewUrl:
+            'https://api.audius.co/v1/tracks/$id/stream?app_name=adimusic',
+      ),
+    );
   }
-
-  return part('H') * 3600 + part('M') * 60 + part('S');
+  return out;
 }
 
 /// "Michael Jackson - Bad (Official Video)" + "michaeljacksonVEVO" -> (Bad, Michael Jackson).
@@ -110,53 +128,28 @@ class DiscoveryService {
 
   final http.Client _http;
 
-  Future<dynamic> _getJson(Uri uri) async {
-    try {
-      final res = await _http.get(uri).timeout(const Duration(seconds: 15));
-      return res.statusCode == 200
-          ? jsonDecode(utf8.decode(res.bodyBytes))
-          : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   // ------------------------------------------------------------------ YouTube
 
   /// Uploads that failed in the player with "embedding not allowed" (101 / 150). Hidden from search.
   final Set<String> blockedVideos = {};
 
-  DateTime? _dataApiCooldownUntil;
-  static const _cooldown = Duration(minutes: 15);
   static final _innertubeUrl = Uri.parse(
     'https://www.youtube.com/youtubei/v1/search?prettyPrint=false',
   );
 
-  bool get dataApiCoolingDown =>
-      _dataApiCooldownUntil != null &&
-      DateTime.now().isBefore(_dataApiCooldownUntil!);
-
-  /// Full-length tracks from YouTube. Two sources, in order: the Data API through the Adi Music
-  /// server (key and daily quota live there), then Innertube, the internal API youtube.com
-  /// itself uses (no key, no quota). The Data API is skipped for 15 minutes after it reports a
-  /// spent quota or a rate limit. Throws [YouTubeUnavailable] only when both sources fail.
+  /// Full-length tracks from YouTube via Innertube (no key, no quota). [serverUrl] is unused and
+  /// kept so callers need not change. Throws [YouTubeUnavailable] when the search fails.
   Future<List<DiscoveryItem>> youtubeSearch(
     String serverUrl,
     String term, {
     int limit = 24,
   }) async {
-    final base = serverUrl.trim().replaceAll(RegExp(r'/+$'), '');
-    List<YouTubeRow>? fromApi;
-    if (base.isNotEmpty && !dataApiCoolingDown) {
-      try {
-        fromApi = await _dataApiSearch(base, term, limit);
-      } on YouTubeUnavailable catch (e) {
-        if (e.status == 403 || e.status == 429) {
-          _dataApiCooldownUntil = DateTime.now().add(_cooldown);
-        }
-      }
+    final List<YouTubeRow> rows;
+    try {
+      rows = await _innertubeSearch(term, limit);
+    } on YouTubeUnavailable {
+      return _audiusSearch(term, limit);
     }
-    final rows = fromApi ?? await _innertubeSearch(term, limit);
 
     // Drop Shorts and videos that already failed to embed; keep relevance order, with edits
     // and reactions after the originals.
@@ -186,6 +179,34 @@ class DiscoveryService {
           );
         }(),
     ];
+  }
+
+  Future<List<DiscoveryItem>> _audiusSearch(String term, int limit) async {
+    final http.Response res;
+    try {
+      res = await _http
+          .get(
+            Uri.https('api.audius.co', '/v1/tracks/search', {
+              'query': term,
+              'limit': '${limit.clamp(1, 50)}',
+              'app_name': 'adimusic',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (e) {
+      throw YouTubeUnavailable('Audius: $e');
+    }
+    if (res.statusCode != 200) {
+      throw YouTubeUnavailable(
+        'Audius HTTP ${res.statusCode}',
+        status: res.statusCode,
+      );
+    }
+    final items = parseAudiusSearch(jsonDecode(utf8.decode(res.bodyBytes)));
+    if (items.isEmpty) {
+      throw const YouTubeUnavailable('Audius returned no tracks', status: 502);
+    }
+    return items.take(limit).toList();
   }
 
   Future<List<YouTubeRow>> _innertubeSearch(String term, int limit) async {
@@ -229,89 +250,6 @@ class DiscoveryService {
       );
     }
     return rows.take(limit).toList();
-  }
-
-  Future<List<YouTubeRow>> _dataApiSearch(
-    String base,
-    String term,
-    int limit,
-  ) async {
-    final http.Response res;
-    try {
-      res = await _http
-          .get(
-            Uri.parse('$base/up/youtube/search').replace(
-              queryParameters: {
-                'part': 'snippet',
-                'type': 'video',
-                'videoCategoryId': '10',
-                'videoEmbeddable': 'true',
-                'maxResults': '${limit.clamp(1, 50)}',
-                'q': term,
-              },
-            ),
-          )
-          .timeout(const Duration(seconds: 15));
-    } catch (e) {
-      throw YouTubeUnavailable('$e');
-    }
-    if (res.statusCode != 200) {
-      throw YouTubeUnavailable(
-        'HTTP ${res.statusCode}',
-        status: res.statusCode,
-      );
-    }
-
-    final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-    final found =
-        <({String id, String title, String channel, String? artwork})>[];
-    for (final i in (data['items'] as List? ?? const [])) {
-      final id = (i as Map)['id'];
-      final videoId = id is Map ? id['videoId'] as String? : null;
-      if (videoId == null) continue;
-      final sn = (i['snippet'] as Map?) ?? const {};
-      final th = (sn['thumbnails'] as Map?) ?? const {};
-      final pick = (th['high'] ?? th['medium'] ?? th['default']) as Map?;
-      found.add((
-        id: videoId,
-        title: (sn['title'] as String?) ?? '',
-        channel: (sn['channelTitle'] as String?) ?? '',
-        artwork: pick?['url'] as String?,
-      ));
-    }
-
-    final durations = <String, int>{};
-    final blocked = <String>{};
-    if (found.isNotEmpty) {
-      final det = await _getJson(
-        Uri.parse('$base/up/youtube/videos').replace(
-          queryParameters: {
-            'part': 'contentDetails,status',
-            'id': found.map((r) => r.id).join(','),
-          },
-        ),
-      );
-      for (final d in (det is Map ? det['items'] as List? : null) ?? const []) {
-        final m = d as Map;
-        final id = m['id'] as String;
-        durations[id] = isoSeconds(
-          (m['contentDetails'] as Map?)?['duration'] as String?,
-        );
-        // The uploader blocked embedding: the iframe would fail with error 150.
-        if (((m['status'] as Map?)?['embeddable']) == false) blocked.add(id);
-      }
-    }
-    return [
-      for (final r in found)
-        if (!blocked.contains(r.id))
-          (
-            id: r.id,
-            title: r.title,
-            channel: r.channel,
-            artwork: r.artwork,
-            duration: durations[r.id] ?? 0,
-          ),
-    ];
   }
 
   static String _normalize(String s) =>

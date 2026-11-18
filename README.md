@@ -31,7 +31,7 @@ Material 3.
 | 🌐 Serving | nginx, configuration only: static files, SSI partials, cached API proxies |
 | 💾 Storage | IndexedDB for audio, tags and cover art. localStorage for settings and playlists |
 | 📝 Lyrics | [Adi Lyrics](https://lyrics.adi.rest), with LRCLIB and LRC Mux as fallbacks |
-| ▶️ Full tracks | YouTube IFrame Player API. Search uses the YouTube Data API (key stays in nginx), and falls back to Innertube when the key is missing or the quota is spent |
+| ▶️ Full tracks | YouTube IFrame Player API. Search needs no API key: Innertube first, then Audius (plain audio element), then Apple previews |
 | 🍎 Previews | iTunes Search API, 30-second clips |
 
 The browser cannot serve HTTP or keep an API key secret. nginx does both, through a
@@ -170,7 +170,6 @@ Settings live in `deploy/adimusic.env`:
 | --- | --- | --- |
 | `ADI_HTTP_HOST` | `127.0.0.1` | Bind address. Use `0.0.0.0` for the LAN |
 | `ADI_HTTP_PORT` | `3000` | Listen port |
-| `YOUTUBE_API_KEY` | empty | Enables full-length Discovery. Never sent to the browser |
 
 `deploy/prepare.sh` writes these into `run/listen.conf` before nginx starts. TLS is not
 handled here. Put Caddy, or nginx with certificates, in front for HTTPS.
@@ -184,8 +183,8 @@ handled here. Put Caddy, or nginx with certificates, in front for HTTPS.
 | `/components/*` | HTML fragments, `noindex` |
 | `/up/adi/api/lyrics`, `/up/lrclib/api/get`, `/up/lrcmux/compat/kpoe/v2/lyrics/get` | lyrics providers. GET only, cached 6 h |
 | `/up/itunes/search` | iTunes previews, cached 30 min |
-| `/up/youtube/{search,videos}` | YouTube Data API with the key added server-side, cached 1 h |
-| `/up/innertube/search` | YouTube's own web API, the fallback when the Data API fails. The only POST endpoint; body capped at 2 KB, cached 30 min |
+| `/up/audius/v1/tracks/search`, `/up/audius/v1/tracks/<id>/stream` | Audius public API (GET, no key). Search cached 30 min; the stream is followed through the 302 to a content node, uncached |
+| `/up/innertube/search` | YouTube's own web API, the primary search source. The only POST endpoint; body capped at 2 KB, cached 30 min |
 
 Only these exact endpoints are proxied. Anything else under `/up/` returns 404.
 
@@ -248,8 +247,8 @@ is a real page; the player routes are `noindex` by meta tag and by header. Unkno
 - The CSP allows scripts only from this origin and `www.youtube.com`. `'unsafe-eval'` is
   required by Alpine's standard build. Frames come from YouTube. Media comes from this
   origin and the iTunes preview host.
-- `deploy/adimusic.env` holds the API key. It is git-ignored and set to mode 600. Restrict
-  the key to the YouTube Data API in Google Cloud.
+- No API key is required. `deploy/adimusic.env` (git-ignored, mode 600) only holds optional
+  bind settings.
 - The proxies accept GET only, except `/up/innertube/search` (POST, one exact endpoint, small
   body). All are rate-limited and cache only 200 and 404 responses. The Innertube request uses
   the public key youtube.com ships in its own pages, so it is not a secret.

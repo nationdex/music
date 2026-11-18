@@ -20,8 +20,8 @@ for p in / /library /library/tracks /library/albums/abc /library/artists /librar
          /assets/vendor/alpine-anchor.min.js /assets/vendor/alpine-focus.min.js /assets/vendor/alpine-intersect.min.js \
          /assets/vendor/unocss-runtime-core.js /assets/vendor/unocss-preset-wind4.js \
          /fonts/MPLUSRounded1c-Regular.woff2 /manifest.webmanifest /robots.txt /images/player.png /images/logo-64.png /assets/js/theme.js \
-         /assets/js/app.js /assets/js/config.js /assets/js/palette.js /assets/js/tags.js /assets/js/db.js \
-         /assets/js/util.js /assets/js/eq.js /assets/js/zip.js /assets/js/presence.js /assets/js/lyrics.js /assets/js/sources.js /assets/js/router.js; do
+         /assets/js/app.js /assets/js/config.js /assets/js/palette.js /assets/js/tagreader.js /assets/js/db.js \
+         /assets/js/util.js /assets/js/equalizer.js /assets/js/zip.js /assets/js/presence.js /assets/js/lyrics.js /assets/js/sources.js /assets/js/router.js; do
   want 200 "GET $p" "$BASE$p"
 done
 
@@ -38,6 +38,7 @@ want 404 "/up/ index" "$BASE/up/"
 # security headers
 hdr="$(curl -sI -m 20 "$BASE/library/tracks")"
 echo "$hdr" | grep -qi '^content-security-policy:.*frame-src https://www.youtube.com' && ok || bad "CSP missing frame-src youtube"
+echo "$hdr" | grep -qi 'dailymotion' && bad "CSP still lists dailymotion" || ok
 echo "$hdr" | grep -qi '^x-frame-options: DENY' && ok || bad "X-Frame-Options missing"
 echo "$hdr" | grep -qi '^x-content-type-options: nosniff' && ok || bad "nosniff missing"
 curl -sI -m 20 "$BASE/components/tracks" | grep -qi '^x-robots-tag: noindex' && ok || bad "components not noindex"
@@ -56,8 +57,12 @@ want 404 "other innertube endpoint" -X POST "$BASE/up/innertube/player"
 want 403 "POST blocked" -X POST "$BASE/up/itunes/search"
 want 404 "other itunes endpoint" "$BASE/up/itunes/lookup?id=1"
 want 404 "other adi endpoint" "$BASE/up/adi/api/health"
-yt="$(code "$BASE/up/youtube/search?part=snippet&q=test&maxResults=1")"
-case "$yt" in 200|503|403) ok;; *) bad "youtube search: unexpected $yt";; esac
+want 404 "Data API proxy removed" "$BASE/up/youtube/search?q=test"
+want 403 "POST audius blocked" -X POST "$BASE/up/audius/v1/tracks/search"
+want 404 "other audius endpoint" "$BASE/up/audius/v1/users/search?query=a"
+want 404 "bad audius stream id" "$BASE/up/audius/v1/tracks/a.b/stream"
+au="$(code "$BASE/up/audius/v1/tracks/search?query=test&limit=1")"
+case "$au" in 200|502|503|504) ok;; *) bad "audius search: unexpected $au";; esac
 want 200 "itunes search" "$BASE/up/itunes/search?term=daft+punk&media=music&entity=song&limit=1"
 
 # Stylesheets: the utilities snapshot comes before app.css (so app.css wins ties) and nothing waits
@@ -133,7 +138,7 @@ while queue:
         if m not in seen and m != "app.js":
             seen.add(m); queue.append(m)
 html = urllib.request.urlopen(base + "/library/tracks", timeout=20).read().decode()
-preloaded = set(re.findall(r'rel="modulepreload" href="/assets/js/([a-z-]+\.js)"', html))
+preloaded = set(re.findall(r'rel="modulepreload" href="/assets/js/([a-z-]+\.js)(?:\?v=[^"]*)?"', html))
 sys.exit(0 if seen <= preloaded else 1)
 PY
 

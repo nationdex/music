@@ -27,95 +27,31 @@ void main() {
       expect(m.name, 'Bad');
       expect(m.artist, 'Michael Jackson');
     });
-
-    test('isoSeconds parses ISO 8601 durations', () {
-      expect(isoSeconds('PT3M25S'), 205);
-      expect(isoSeconds('PT1H2M3S'), 3723);
-      expect(isoSeconds('PT45S'), 45);
-      expect(isoSeconds(null), 0);
-    });
   });
 
   group('DiscoveryService', () {
-    test(
-      'YouTube: drops Shorts, orders edits after originals, reads durations',
-      () async {
-        final requested = <Uri>[];
-        final client = MockClient((req) async {
-          requested.add(req.url);
-          if (req.url.path.endsWith('/up/youtube/search')) {
-            return jsonResponse({
-              'items': [
-                {
-                  'id': {'videoId': 'short1'},
-                  'snippet': {'title': 'Quick clip', 'channelTitle': 'A'},
-                },
-                {
-                  'id': {'videoId': 'rev1'},
-                  'snippet': {
-                    'title': 'Artist - Song (slowed + reverb)',
-                    'channelTitle': 'B',
-                  },
-                },
-                {
-                  'id': {'videoId': 'orig1'},
-                  'snippet': {
-                    'title': 'Artist - Song (Official Audio)',
-                    'channelTitle': 'ArtistVEVO',
-                    'thumbnails': {
-                      'high': {'url': 'https://i/h.jpg'},
-                    },
-                  },
-                },
-                {
-                  'id': {'kind': 'youtube#channel'},
-                  'snippet': {'title': 'ignored'},
-                },
-              ],
-            });
-          }
-          return jsonResponse({
-            'items': [
-              {
-                'id': 'short1',
-                'contentDetails': {'duration': 'PT30S'},
-              },
-              {
-                'id': 'rev1',
-                'contentDetails': {'duration': 'PT4M'},
-              },
-              {
-                'id': 'orig1',
-                'contentDetails': {'duration': 'PT3M25S'},
-              },
-            ],
-          });
-        });
-
-        final items = await DiscoveryService(client: client)
-            .youtubeSearch('https://music.example.com/', 'artist song');
-        expect(items.map((i) => i.videoId), [
-          'orig1',
-          'rev1',
-        ], reason: 'short dropped, reverb edit last');
-        expect(items.first.name, 'Song');
-        expect(items.first.artist, 'Artist');
-        expect(items.first.duration, 205);
-        expect(items.first.artwork, 'https://i/h.jpg');
-        expect(items.first.source, TrackSource.youtube);
-        expect(items.first.trackId, 'yt_orig1');
-
-        final search = requested.first;
-        expect(search.host, 'music.example.com');
-        expect(search.queryParameters['q'], 'artist song');
-        expect(search.queryParameters['videoCategoryId'], '10');
-        expect(
-          search.queryParameters.containsKey('key'),
-          isFalse,
-          reason: 'the API key lives on the server, never in the app',
-        );
-      },
-    );
+    test('YouTube: drops Shorts and orders edits after originals', () async {
+      final client = MockClient(
+        (_) async => jsonResponse(
+          innertubeJson([
+            ('short1', 'Quick clip', 'A', '0:30'),
+            ('rev1', 'Artist - Song (slowed + reverb)', 'B', '4:00'),
+            ('orig1', 'Artist - Song (Official Audio)', 'ArtistVEVO', '3:25'),
+          ]),
+        ),
+      );
+      final items = await DiscoveryService(client: client)
+          .youtubeSearch('', 'artist song');
+      expect(items.map((i) => i.videoId), [
+        'orig1',
+        'rev1',
+      ], reason: 'short dropped, reverb edit last');
+      expect(items.first.name, 'Song');
+      expect(items.first.artist, 'Artist');
+      expect(items.first.duration, 205);
+      expect(items.first.source, TrackSource.youtube);
+      expect(items.first.trackId, 'yt_orig1');
+    });
 
     test(
       'YouTube unavailable: no server, HTTP error, network failure',
@@ -343,67 +279,46 @@ void innertubeTests() {
       },
     );
 
-    test('Data API quota spent (403): falls back, then skips the Data API for a while', () async {
-      var apiCalls = 0, innertubeCalls = 0;
-      final client = MockClient((req) async {
-        if (req.url.host == 'youtube.com' ||
-            req.url.host == 'www.youtube.com') {
-          innertubeCalls++;
-          return jsonResponse(
-            innertubeJson([('a1', 'Artist - Song', 'Artist', '3:00')]),
-          );
-        }
-        apiCalls++;
-        return jsonResponse({
-          'error': {
-            'errors': [
-              {'reason': 'quotaExceeded'},
-            ],
-          },
-        }, 403);
-      });
-      final svc = DiscoveryService(client: client);
-      expect(
-        (await svc.youtubeSearch(
-          'https://music.example.com',
-          'one',
-        )).single.videoId,
-        'a1',
-      );
-      expect(svc.dataApiCoolingDown, isTrue);
-      await svc.youtubeSearch('https://music.example.com', 'two');
-      expect(
-        apiCalls,
-        1,
-        reason: 'cooldown: the second search does not touch the Data API',
-      );
-      expect(innertubeCalls, 2);
-    });
-
-    test('Data API 503 (no key) and network errors also fall back, without a cooldown', () async {
-      var apiCalls = 0;
-      final client = MockClient((req) async {
-        if (req.url.host.endsWith('youtube.com')) {
-          return jsonResponse(
-            innertubeJson([('a1', 'Artist - Song', 'Artist', '3:00')]),
-          );
-        }
-        apiCalls++;
-        return jsonResponse({}, 503);
-      });
-      final svc = DiscoveryService(client: client);
-      await svc.youtubeSearch('https://music.example.com', 'one');
-      await svc.youtubeSearch('https://music.example.com', 'two');
-      expect(
-        apiCalls,
-        2,
-        reason: 'a missing key may be fixed any moment, so it is retried',
-      );
-      expect(svc.dataApiCoolingDown, isFalse);
-    });
+    test(
+      'Innertube down: falls back to Audius, streams over plain HTTP',
+      () async {
+        final client = MockClient((req) async {
+          if (req.url.host == 'api.audius.co') {
+            expect(req.url.queryParameters['query'], 'x');
+            return jsonResponse({
+              'data': [
+                {
+                  'id': 'vZJJz',
+                  'title': 'Song',
+                  'user': {'name': 'Artist'},
+                  'artwork': {'480x480': 'https://a/b.jpg'},
+                  'duration': 190,
+                  'is_streamable': true,
+                },
+                {
+                  'id': 'lock',
+                  'title': 'Locked',
+                  'access': {'stream': false},
+                },
+              ],
+            });
+          }
+          return jsonResponse({}, 500);
+        });
+        final items = await DiscoveryService(client: client)
+            .youtubeSearch('', 'x');
+        expect(items.single.id, 'au:vZJJz');
+        expect(items.single.source, TrackSource.remote);
+        expect(items.single.duration, 190);
+        expect(
+          items.single.previewUrl,
+          'https://api.audius.co/v1/tracks/vZJJz/stream?app_name=adimusic',
+        );
+      },
+    );
 
     test(
-      'both sources failing throws, so the caller can use Apple previews',
+      'search failure throws, so the caller can use Apple previews',
       () async {
         final svc = DiscoveryService(
           client: MockClient((_) async => jsonResponse({}, 500)),

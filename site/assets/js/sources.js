@@ -1,21 +1,14 @@
 import { API, DERIVATIVE_TITLES } from './config.js';
-import { getJson } from './util.js';
 
-function isoSeconds(iso) {
-  const n = (u) => parseInt((String(iso || '').match(new RegExp('(\\d+)' + u)) || [0, 0])[1], 10) || 0;
-  return n('H') * 3600 + n('M') * 60 + n('S');
-}
+// ---------------------------------------------------------------------------- Search
+// Keyless sources, in order: Innertube (the internal API youtube.com itself uses), then Audius
+// (open music network; full tracks streamed over plain HTTP). Apple previews (itunesSearch) are
+// the last resort, chosen by the caller. Audius rows carry `stream`, a URL for an <audio> element,
+// and ids "au:<id>"; they play through the same audio path as Apple previews.
 
-// ---------------------------------------------------------------------------- YouTube search
-// Two sources, in order: the Data API (needs a key, has a daily quota) and Innertube, the
-// internal API youtube.com itself uses (no key, no quota). The Data API is skipped for
-// QUOTA_COOLDOWN_MS after it reports a spent quota or a rate limit, so a dead key does not
-// slow down every search.
-
-const QUOTA_KEY = 'adimusic:ytQuotaUntil';
 const BLOCKED_KEY = 'adimusic:ytBlocked';
-const QUOTA_COOLDOWN_MS = 15 * 60 * 1000;
 const BLOCKED_MAX = 300;
+export const AUDIUS_PREFIX = 'au:';
 
 const memory = new Map();
 function readStore(key) {
@@ -31,10 +24,6 @@ function writeStore(key, value) {
   } catch {
     memory.set(key, value);
   }
-}
-
-export function dataApiCoolingDown() {
-  return Number(readStore(QUOTA_KEY) || 0) > Date.now();
 }
 
 /** Video ids that failed in the player with "embedding not allowed" (101 / 150). Hidden from search. */
@@ -55,48 +44,27 @@ export const blockedVideos = {
   }
 };
 
-async function dataApiSearch(term, limit) {
-  const q = new URLSearchParams({
-    part: 'snippet',
-    type: 'video',
-    videoCategoryId: '10',
-    // Only videos whose owner allows embedding; the rest fail in the player with error 150.
-    videoEmbeddable: 'true',
-    maxResults: String(Math.min(limit, 50)),
-    q: term
-  });
-  const res = await fetch(API.youtube + '/search?' + q);
-  if (!res.ok) throw Object.assign(new Error('YouTube search failed'), { status: res.status });
-  const data = await res.json();
-  const items = (data.items || [])
-    .filter((i) => i.id && i.id.videoId)
-    .map((i) => {
-      const sn = i.snippet || {},
-        th = sn.thumbnails || {};
-      return {
-        id: i.id.videoId,
-        title: sn.title || '',
-        channel: sn.channelTitle || '',
-        artwork: (th.high || th.medium || th.default || {}).url,
-        duration: 0
-      };
-    });
-  if (items.length) {
-    const det = await getJson(
-      API.youtube + '/videos?' + new URLSearchParams({ part: 'contentDetails,status', id: items.map((i) => i.id).join(',') })
-    );
-    const dur = {};
-    const blocked = new Set();
-    ((det && det.items) || []).forEach((d) => {
-      dur[d.id] = isoSeconds(d.contentDetails && d.contentDetails.duration);
-      if (d.status && d.status.embeddable === false) blocked.add(d.id);
-    });
-    items.forEach((i) => {
-      i.duration = dur[i.id] || 0;
-      i.blocked = blocked.has(i.id);
-    });
-  }
-  return items.filter((i) => !i.blocked);
+/** Maps an Audius /v1/tracks/search response to search rows. Non-streamable tracks are dropped. */
+export function parseAudiusSearch(data, base = '') {
+  return ((data && data.data) || [])
+    .filter((t) => t && t.id && t.is_streamable !== false && !(t.access && t.access.stream === false))
+    .map((t) => ({
+      id: AUDIUS_PREFIX + t.id,
+      title: t.title || '',
+      channel: (t.user && t.user.name) || '',
+      artwork: (t.artwork && (t.artwork['480x480'] || t.artwork['1000x1000'] || t.artwork['150x150'])) || undefined,
+      duration: Number(t.duration) || 0,
+      stream: base + API.audius + '/v1/tracks/' + encodeURIComponent(t.id) + '/stream'
+    }));
+}
+
+async function audiusSearch(term, limit) {
+  const q = new URLSearchParams({ query: term, limit: String(Math.min(limit, 50)) });
+  const res = await fetch(API.audius + '/v1/tracks/search?' + q);
+  if (!res.ok) throw Object.assign(new Error('Audius search failed'), { status: res.status });
+  const rows = parseAudiusSearch(await res.json(), location.origin);
+  if (!rows.length) throw Object.assign(new Error('Audius returned no tracks'), { status: 502 });
+  return rows.slice(0, limit);
 }
 
 // "4:08" / "1:02:03" -> seconds.
@@ -148,25 +116,19 @@ async function innertubeSearch(term, limit) {
   return rows.slice(0, limit);
 }
 
-// Full-length tracks from YouTube. Throws {status} only when both sources fail.
+// Full-length tracks. Throws {status} only when every source fails.
 export async function youtubeSearch(term, limit = 24) {
   let items = null;
-  if (!dataApiCoolingDown()) {
+  let status = 502;
+  for (const search of [innertubeSearch, audiusSearch]) {
     try {
-      items = await dataApiSearch(term, limit);
+      items = await search(term, limit);
+      break;
     } catch (e) {
-      // 403 = quota spent (or key restricted), 429 = rate limited. Anything else (no key, 5xx,
-      // offline) just falls through to Innertube for this search.
-      if (e.status === 403 || e.status === 429) writeStore(QUOTA_KEY, String(Date.now() + QUOTA_COOLDOWN_MS));
+      status = e.status || 502;
     }
   }
-  if (!items) {
-    try {
-      items = await innertubeSearch(term, limit);
-    } catch (e) {
-      throw Object.assign(new Error('YouTube search failed'), { status: e.status || 502 });
-    }
-  }
+  if (!items) throw Object.assign(new Error('Search failed'), { status });
   // Drop Shorts and videos that already failed to embed; keep relevance order, with
   // edits/reactions after the originals.
   const real = items.filter((i) => !blockedVideos.has(i.id) && !(i.duration > 0 && i.duration < 60));
@@ -195,7 +157,7 @@ export async function findYouTubeAlternatives(track, exclude = []) {
     return [];
   }
   return rows
-    .filter((r) => r.id !== track.videoId && !exclude.includes(r.id))
+    .filter((r) => !r.stream && r.id !== track.videoId && !exclude.includes(r.id))
     .map((r) => {
       const meta = cleanYouTubeMeta(r.title, r.channel);
       const name = normalize(meta.name);
