@@ -13,6 +13,7 @@ export const EQ_MAX_CUSTOM = 20;
 
 /** Gains in dB for the ten bands above. */
 export const EQ_PRESETS = {
+  'Gentle treble': [0, 0, 0, 0, 0, -1, -3, -5, -6, -6],
   Flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   'Bass Boost': [7, 6, 5, 3, 1, 0, 0, 0, 0, 0],
   'Bass Reducer': [-6, -5, -4, -2, -1, 0, 0, 0, 0, 0],

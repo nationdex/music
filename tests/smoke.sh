@@ -16,9 +16,8 @@ want() { # want <status> <name> <curl args...>
 # pages and static files
 for p in / /library /library/tracks /library/albums/abc /library/artists /library/playlists /discovery /settings /player \
          /components/home /components/tracks /components/collection /components/discovery /components/settings /components/player \
-         /assets/app.css /assets/uno.config.js /assets/vendor/alpine.min.js /assets/vendor/alpine-persist.min.js \
+         /assets/css/app.css /assets/css/motion.css /assets/vendor/htmx-2.0.10.min.js /assets/vendor/alpine.min.js /assets/vendor/alpine-persist.min.js \
          /assets/vendor/alpine-anchor.min.js /assets/vendor/alpine-focus.min.js /assets/vendor/alpine-intersect.min.js \
-         /assets/vendor/unocss-runtime-core.js /assets/vendor/unocss-preset-wind4.js \
          /fonts/MPLUSRounded1c-Regular.woff2 /manifest.webmanifest /robots.txt /images/player.png /images/logo-64.png /assets/js/theme.js \
          /assets/js/app.js /assets/js/config.js /assets/js/palette.js /assets/js/tagreader.js /assets/js/db.js \
          /assets/js/util.js /assets/js/equalizer.js /assets/js/zip.js /assets/js/presence.js /assets/js/lyrics.js /assets/js/sources.js /assets/js/router.js; do
@@ -65,17 +64,14 @@ au="$(code "$BASE/up/audius/v1/tracks/search?query=test&limit=1")"
 case "$au" in 200|502|503|504) ok;; *) bad "audius search: unexpected $au";; esac
 want 200 "itunes search" "$BASE/up/itunes/search?term=daft+punk&media=music&entity=song&limit=1"
 
-# Stylesheets: the utilities snapshot comes before app.css (so app.css wins ties) and nothing waits
-# on the UnoCSS runtime, which only loads on request (?uno=runtime)
+# Shared styles must load before the component stylesheet.
 for p in / /library/tracks /privacy; do
   html="$(curl -s -m 20 "$BASE$p")"
-  u=$(printf '%s' "$html" | grep -bo 'assets/utilities.css' | head -1 | cut -d: -f1)
-  c=$(printf '%s' "$html" | grep -bo 'assets/app.css' | head -1 | cut -d: -f1)
+  u=$(printf '%s' "$html" | grep -bo 'assets/css/utilities.css' | head -1 | cut -d: -f1)
+  c=$(printf '%s' "$html" | grep -bo 'assets/css/app.css' | head -1 | cut -d: -f1)
   if [ -n "$u" ] && [ -n "$c" ] && [ "$u" -lt "$c" ]; then ok; else bad "$p: utilities.css must be linked before app.css"; fi
-  printf '%s' "$html" | grep -q 'assets/vendor/unocss-runtime-core.js' && bad "$p: the UnoCSS runtime must not load by default" || ok
 done
-want 200 "GET utilities.css" "$BASE/assets/utilities.css"
-if [ "$(curl -s -m 20 "$BASE/assets/utilities.css" | grep -c '{')" -gt 300 ]; then ok; else bad "utilities.css looks empty: run sh tools/css-snapshot/snapshot.sh"; fi
+want 200 "GET utilities.css" "$BASE/assets/css/utilities.css"
 
 # light-dark() fallback for Safari before 17.5 must match the tokens
 python3 "$(dirname "$0")/../tools/css-compat/fallback.py" --check >/dev/null 2>&1 && ok || bad "app.css light-dark fallback is out of date: python3 tools/css-compat/fallback.py"
@@ -109,8 +105,8 @@ want 200 "GET /privacy" "$BASE/privacy"
 want 301 "/privacy.html redirects" "$BASE/privacy.html"
 want 404 "unknown path is a real 404" "$BASE/definitely-not-here"
 curl -s -m 20 "$BASE/definitely-not-here" | grep -q 'Page not found' && ok || bad "404 page missing"
-curl -sI -m 20 "$BASE/assets/app.css?v=abc123" | grep -qi 'cache-control: .*immutable' && ok || bad "versioned assets must be immutable"
-curl -sI -m 20 "$BASE/assets/app.css" | grep -qi 'cache-control: no-cache' && ok || bad "unversioned assets must revalidate"
+curl -sI -m 20 "$BASE/assets/css/app.css?v=abc123" | grep -qi 'cache-control: .*immutable' && ok || bad "versioned assets must be immutable"
+curl -sI -m 20 "$BASE/assets/css/app.css" | grep -qi 'cache-control: no-cache' && ok || bad "unversioned assets must revalidate"
 
 # Encodings: exactly one Content-Encoding, and the body decodes to the real file (br only when served)
 plain_sum=$(curl -s -m 20 -H 'Accept-Encoding: identity' "$BASE/assets/js/app.js" | sha256sum | cut -d' ' -f1)
@@ -141,12 +137,6 @@ html = urllib.request.urlopen(base + "/library/tracks", timeout=20).read().decod
 preloaded = set(re.findall(r'rel="modulepreload" href="/assets/js/([a-z-]+\.js)(?:\?v=[^"]*)?"', html))
 sys.exit(0 if seen <= preloaded else 1)
 PY
-
-# Tailwind-only syntax that UnoCSS Wind4 does not generate (e.g. max-w-(--var)); use x-[var(--var)]
-SITE="$(dirname "$0")/../site"
-if grep -rnE '\b[a-z-]+-\(--[A-Za-z-]+\)' "$SITE"/*.html "$SITE"/components "$SITE"/partials 2>/dev/null | grep -q .; then
-  bad "Tailwind paren shorthand x-(--var) found in site/: use x-[var(--var)]"
-else ok; fi
 
 # PWA: worker, manifest, icons, and every file the worker precaches
 SITE="$(dirname "$0")/../site"

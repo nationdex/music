@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keeps the light-dark() fallback in site/assets/app.css in step with the color tokens.
+"""Keeps the light-dark() fallback in site/assets/css/app.css in step with the color tokens.
 
   python3 tools/css-compat/fallback.py          rewrite the block between the compat markers
   python3 tools/css-compat/fallback.py --check  exit 1 if it is out of date (used by tests/smoke.sh)
@@ -7,7 +7,7 @@
 import re
 import sys
 
-PATH = "site/assets/app.css"
+PATH = "site/assets/css/app.css"
 css = open(PATH, encoding="utf-8").read()
 tokens = css[css.index("/* Tokens. The Material 3 colors"):]
 root = re.search(r":root \{(.*?)\n\}", tokens, re.S).group(1)

@@ -7,8 +7,11 @@ export const DEFAULT_SETTINGS = {
   motion: 'auto', // 'auto' | 'reduced' | 'full'
   volumeInPlayer: true,
   preservePitch: true,
+  discoveryContent: 'music',
+  discoveryRating: 'standard',
   discoverySource: 'youtube', // 'youtube' (full tracks) | 'itunes' (30 s previews)
   volume: 1,
+  outputReductionDb: 0,
   discordRpc: false, // show what is playing on Discord (needs tools/discord-rpc running)
   discordClientId: '' // Discord application id (discord.com/developers)
 };

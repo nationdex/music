@@ -44,11 +44,30 @@ export const blockedVideos = {
   }
 };
 
+const nonMusic = /\b(?:game[\s-]*plays?|walk[\s-]*throughs?|play[\s-]*throughs?|play sessions?|no commentary|let['’]s play|tutorial|how to|reaction|review|podcast|unboxing)\b/i;
+const ageNotice = /\b(?:age[- ]restricted|18\+|adults only|nsfw)(?=\W|$)/i;
+const explicitNotice = /(?:\[|\()\s*(?:explicit|uncensored|dirty version)\s*(?:\]|\))/i;
+
+function allowedRating(rating, mode) {
+  if (rating === 'restricted') return false;
+  if (mode === 'clean') return rating === 'clean';
+  return rating !== 'explicit' || mode === 'all';
+}
+
+function musicResult(title, description = '') {
+  if (ageNotice.test(title || '')) return 'restricted';
+  return explicitNotice.test(title) || explicitNotice.test(description) ? 'explicit' : 'unknown';
+}
+
 /** Maps an Audius /v1/tracks/search response to search rows. Non-streamable tracks are dropped. */
-export function parseAudiusSearch(data, base = '') {
+export function parseAudiusSearch(data, base = '', content = 'music') {
   return ((data && data.data) || [])
     .filter((t) => t && t.id && t.is_streamable !== false && !(t.access && t.access.stream === false))
+    .filter((t) => content !== 'music' || (!nonMusic.test(t.title || '') && !/^(?:podcast|audiobook|spoken word|comedy)$/i.test(t.genre || '')))
     .map((t) => ({
+      rating: t.is_age_restricted === true || musicResult(t.title) === 'restricted' ? 'restricted'
+        : t.is_explicit === true || musicResult(t.title) === 'explicit' ? 'explicit'
+        : t.is_explicit === false ? 'clean' : 'unknown',
       id: AUDIUS_PREFIX + t.id,
       title: t.title || '',
       channel: (t.user && t.user.name) || '',
@@ -58,13 +77,12 @@ export function parseAudiusSearch(data, base = '') {
     }));
 }
 
-async function audiusSearch(term, limit) {
+async function audiusSearch(term, limit, _mode, content) {
   const q = new URLSearchParams({ query: term, limit: String(Math.min(limit, 50)) });
   const res = await fetch(API.audius + '/v1/tracks/search?' + q);
   if (!res.ok) throw Object.assign(new Error('Audius search failed'), { status: res.status });
-  const rows = parseAudiusSearch(await res.json(), location.origin);
-  if (!rows.length) throw Object.assign(new Error('Audius returned no tracks'), { status: 502 });
-  return rows.slice(0, limit);
+  const rows = parseAudiusSearch(await res.json(), location.origin, content);
+  return rows;
 }
 
 // "4:08" / "1:02:03" -> seconds.
@@ -76,7 +94,7 @@ export function clockSeconds(text) {
 }
 
 /** Pulls videos out of an Innertube search response. Live streams (no length) are dropped. */
-export function parseInnertubeSearch(data) {
+export function parseInnertubeSearch(data, content = 'music') {
   const sections = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents || [];
   const out = [];
   for (const section of sections) {
@@ -85,11 +103,22 @@ export function parseInnertubeSearch(data) {
       if (!v || !v.videoId) continue;
       const length = v.lengthText?.simpleText;
       if (!length) continue;
+      const title = (v.title?.runs || []).map((r) => r.text).join('');
+      const channel = v.ownerText?.runs?.[0]?.text || v.longBylineText?.runs?.[0]?.text || '';
+      const labels = [...(v.badges || []), ...(v.ownerBadges || [])]
+        .map((b) => b.metadataBadgeRenderer?.label || '').join(' ');
+      // Titles alone can falsely label gameplay as music. Require an artist channel.
+      const artistChannel = / - Topic$|VEVO$/i.test(channel) ||
+        (v.ownerBadges || []).some((badge) =>
+          badge.metadataBadgeRenderer?.style === 'BADGE_STYLE_TYPE_VERIFIED_ARTIST');
+      if (content === 'music' && (nonMusic.test(title) || !artistChannel)) continue;
+      const rating = v.isAgeRestricted === true || ageNotice.test(labels) ? 'restricted' : (/\bexplicit\b/i.test(labels) ? 'explicit' : musicResult(title));
       const thumbs = v.thumbnail?.thumbnails || [];
       out.push({
         id: v.videoId,
-        title: (v.title?.runs || []).map((r) => r.text).join(''),
-        channel: v.ownerText?.runs?.[0]?.text || v.longBylineText?.runs?.[0]?.text || '',
+        title,
+        channel,
+        rating,
         // The hq720 thumbnail URL has tracking query parameters; the stable one is enough.
         artwork: 'https://i.ytimg.com/vi/' + v.videoId + '/hqdefault.jpg',
         thumbnail: thumbs.length ? thumbs[thumbs.length - 1].url : undefined,
@@ -100,40 +129,43 @@ export function parseInnertubeSearch(data) {
   return out;
 }
 
-async function innertubeSearch(term, limit) {
+async function innertubeSearch(term, _limit, mode, content) {
   const res = await fetch(API.innertube + '/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      context: { client: { clientName: 'WEB', clientVersion: '2.20260101.00.00', hl: 'en', gl: 'US' } },
-      query: term,
+      context: {
+        client: { clientName: 'WEB', clientVersion: '2.20260101.00.00', hl: 'en', gl: 'US' },
+        user: { lockedSafetyMode: mode !== 'all' }
+      },
+      query: content === 'music' ? term + ' music' : term,
       params: 'EgIQAQ%3D%3D' // type = video
     })
   });
   if (!res.ok) throw Object.assign(new Error('Innertube search failed'), { status: res.status });
-  const rows = parseInnertubeSearch(await res.json());
-  if (!rows.length) throw Object.assign(new Error('Innertube returned no videos'), { status: 502 });
-  return rows.slice(0, limit);
+  const rows = parseInnertubeSearch(await res.json(), content);
+  return rows;
 }
 
-// Full-length tracks. Throws {status} only when every source fails.
-export async function youtubeSearch(term, limit = 24) {
-  let items = null;
-  let status = 502;
-  for (const search of [innertubeSearch, audiusSearch]) {
+// Try the next provider when no playable rows pass the current filter.
+export async function youtubeSearch(term, limit = 24, mode = 'standard', content = 'music') {
+  let answered = false;
+  const searches = mode === 'clean' ? [audiusSearch] : [innertubeSearch, audiusSearch];
+  for (const search of searches) {
     try {
-      items = await search(term, limit);
-      break;
-    } catch (e) {
-      status = e.status || 502;
+      const rows = await search(term, limit, mode, content);
+      answered = true;
+      const real = rows.filter((row) => allowedRating(row.rating, mode) &&
+        (row.stream || (!blockedVideos.has(row.id) && row.duration >= 60)));
+      if (!real.length) continue;
+      const derivative = (row) => DERIVATIVE_TITLES.some((word) => row.title.toLowerCase().includes(word));
+      return [...real.filter((row) => !derivative(row)), ...real.filter(derivative)].slice(0, limit);
+    } catch {
+      // Try the next source.
     }
   }
-  if (!items) throw Object.assign(new Error('Search failed'), { status });
-  // Drop Shorts and videos that already failed to embed; keep relevance order, with
-  // edits/reactions after the originals.
-  const real = items.filter((i) => !blockedVideos.has(i.id) && !(i.duration > 0 && i.duration < 60));
-  const derivative = (i) => DERIVATIVE_TITLES.some((w) => i.title.toLowerCase().includes(w));
-  return [...real.filter((i) => !derivative(i)), ...real.filter(derivative)];
+  if (answered) return [];
+  throw Object.assign(new Error('Search failed'), { status: 502 });
 }
 
 const normalize = (s) =>
@@ -147,12 +179,12 @@ const normalize = (s) =>
  * Other uploads of the same song, best first. Used when a video cannot be embedded
  * (labels often block the official upload but allow the "Topic" or lyric one).
  */
-export async function findYouTubeAlternatives(track, exclude = []) {
+export async function findYouTubeAlternatives(track, exclude = [], mode = 'standard') {
   const wantName = normalize(track.name);
   const wantArtist = normalize(track.artist);
   let rows = [];
   try {
-    rows = await youtubeSearch((track.artist + ' ' + track.name).trim(), 15);
+    rows = await youtubeSearch((track.artist + ' ' + track.name).trim(), 15, mode);
   } catch {
     return [];
   }
@@ -174,11 +206,20 @@ export async function findYouTubeAlternatives(track, exclude = []) {
     .slice(0, 3);
 }
 
-export async function itunesSearch(term, limit = 24) {
-  const q = new URLSearchParams({ term, media: 'music', entity: 'song', limit: String(limit) });
+export async function itunesSearch(term, limit = 24, mode = 'standard', content = 'music') {
+  const q = new URLSearchParams({ term, media: 'music', entity: 'song', explicit: mode === 'all' ? 'Yes' : 'No', limit: String(Math.min(limit * 2, 200)) });
   const res = await fetch(API.itunes + '/search?' + q);
   if (!res.ok) throw new Error('Search failed');
-  return (await res.json()).results || [];
+  return ((await res.json()).results || []).filter((row) => {
+    if (row.kind !== 'song' || !row.previewUrl || !row.trackName || (content === 'music' && nonMusic.test(row.trackName))) return false;
+    const trackRating = row.trackExplicitness?.toLowerCase();
+    const signal = musicResult(row.trackName);
+    const rating = signal === 'restricted' ? 'restricted'
+      : trackRating === 'explicit' || signal === 'explicit' ? 'explicit'
+      : ['cleaned', 'notexplicit'].includes(trackRating) ? 'clean'
+      : row.collectionExplicitness?.toLowerCase() === 'explicit' ? 'explicit' : 'unknown';
+    return allowedRating(rating, mode);
+  }).slice(0, limit);
 }
 
 // YouTube IFrame Player bridge. Full-length tracks; the player store routes here
@@ -206,7 +247,7 @@ export const YTBridge = {
           playerVars: { playsinline: 1, controls: 0, rel: 0, modestbranding: 1 },
           events: {
             onReady: () => {
-              if (this.store) this.setVolume(Math.round(this.store.volume * 100));
+              if (this.store) this.setVolume(Math.round(this.store.outputVolume * 100));
               resolve();
             },
             onStateChange: (e) => {

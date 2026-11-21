@@ -5,16 +5,17 @@
 // Bump CACHE when SHELL changes shape (files added or removed). File *contents* do
 // not need a bump: code is fetched network-first and the cache is refreshed.
 
-const CACHE = 'adi-shell-v4';
+const CACHE = 'adi-shell-v6';
 
 const SHELL = [
   '/',
   '/app.html',
   '/manifest.webmanifest',
   '/favicon.ico',
-  '/assets/app.css',
-  '/assets/utilities.css',
-  '/assets/js/unocss-dev.js',
+  '/assets/css/app.css',
+  '/assets/css/motion.css',
+  '/assets/css/landing.css',
+  '/assets/css/utilities.css',
   '/assets/js/app.js',
   '/assets/js/config.js',
   '/assets/js/equalizer.js',
@@ -30,6 +31,7 @@ const SHELL = [
   '/assets/js/util.js',
   '/assets/js/zip.js',
   '/assets/vendor/alpine.min.js',
+  '/assets/vendor/htmx-2.0.10.min.js',
   '/assets/vendor/alpine-anchor.min.js',
   '/assets/vendor/alpine-focus.min.js',
   '/assets/vendor/alpine-intersect.min.js',
@@ -46,9 +48,6 @@ const SHELL = [
   '/images/icon-192.png',
   '/images/icon-512.png',
   '/images/logo-64.png',
-  '/images/player.webp',
-  '/images/player-600.webp',
-  '/images/og.png',
   '/privacy'
 ];
 

@@ -26,12 +26,15 @@ import { buildPresence, presence } from './presence.js';
 import { pwa } from './pwa.js';
 import { resolveRoute } from './router.js';
 import { YTBridge, blockedVideos, cleanYouTubeMeta, findYouTubeAlternatives, itunesSearch, youtubeSearch } from './sources.js';
-import { compressArtwork, probeDuration, readTags } from './tagreader.js';
 import { slugId } from './util.js';
-import { ZipReader, baseName, isZipFile, mimeFor } from './zip.js';
 
 // Object URLs for stored audio blobs, created on first play.
 const fileUrls = new Map();
+const fragments = new Map();
+let navigation = 0;
+let mountedFragment = null;
+let routeAnimation;
+let libraryReady;
 
 const LIGHT_DARK = typeof CSS !== 'undefined' && CSS.supports('color', 'light-dark(red, blue)');
 
@@ -93,7 +96,8 @@ function initAlpineApp() {
       { path: '/library/albums', name: 'albums', icon: 'album', label: 'Albums' },
       { path: '/library/artists', name: 'artists', icon: 'person', label: 'Artists' },
       { path: '/library/playlists', name: 'playlists', icon: 'playlist', label: 'Playlists' },
-      { path: '/discovery', name: 'discovery', icon: 'compass', label: 'Discovery' }
+      { path: '/discovery', name: 'discovery', icon: 'compass', label: 'Discovery' },
+      { path: '/settings', name: 'settings', icon: 'settings', label: 'Settings' }
     ],
 
     // ---- library
@@ -150,7 +154,7 @@ function initAlpineApp() {
       this.audioEl = document.getElementById('audio-player');
       if (typeof this.settings.volume === 'number') this.volume = this.settings.volume;
       if (this.audioEl) {
-        this.audioEl.volume = this.volume;
+        this.audioEl.volume = this.outputVolume;
         this.audioEl.preservesPitch = this.settings.preservePitch !== false;
       }
       YTBridge.attach(this);
@@ -182,13 +186,12 @@ function initAlpineApp() {
       this.setupInstall();
       this.setupPresence();
       this.setupFileLaunch();
-      await this.loadLibrary();
+      libraryReady = this.loadLibrary();
 
       const start = resolveRoute(location.pathname) || resolveRoute('/library/tracks');
       if (!resolveRoute(location.pathname)) history.replaceState({}, '', start.path);
       this.route = start;
       await this.loadFragment(start.fragment);
-      this.prewarmStyles();
     },
 
     // ================================================================= routing
@@ -199,45 +202,50 @@ function initAlpineApp() {
       return this.narrow;
     },
 
-    // Pages are plain HTML fragments; Alpine's mutation observer wires them up.
-    async loadFragment(name) {
+    async loadFragment(name, { animate = false } = {}) {
+      const version = ++navigation;
       const host = document.getElementById('main-view');
-      let html;
-      try {
-        const res = await fetch('/components/' + name);
-        html = res.ok ? await res.text() : null;
-      } catch {
-        html = null;
+      let pending = fragments.get(name);
+      if (!pending) {
+        let html;
+        pending = window.htmx.ajax('GET', '/components/' + name, {
+          handler(_source, { xhr }) {
+            if (xhr.status === 200) html = xhr.responseText;
+          }
+        }).then(() => html, () => null).then((result) => {
+          if (!result) fragments.delete(name);
+          return result;
+        });
+        fragments.set(name, pending);
       }
-      html =
-        html ||
-        '<div class="m-auto p-8 text-center text-title-lg text-error">Could not load this page. Check your connection and reload.</div>';
-      // Generate the fragment's utility CSS first so it never paints unstyled.
-      await this.styleFor(html);
-      host.innerHTML = html;
-    },
+      const html = await pending;
+      if (name !== 'discovery' && name !== 'settings') await libraryReady;
+      if (version !== navigation) return;
 
-    // UnoCSS runtime: resolves once the classes found in `html` have been written to the stylesheet.
-    styleFor(html) {
-      const rt = window.__unocss_runtime;
-      return rt && rt.extract ? rt.extract(html).catch(() => {}) : Promise.resolve();
-    },
+      routeAnimation?.cancel();
+      window.htmx.swap(host, html ||
+        '<p class="m-auto p-8 text-error" role="alert">Could not load this page. Check your connection and reload.</p>',
+        { swapStyle: 'innerHTML', settleDelay: 0 });
+      mountedFragment = html ? name : null;
 
-    // Fetch every page once so classes Alpine toggles later (active states, etc.) are already generated.
-    prewarmStyles() {
-      ['home', 'tracks', 'collection', 'discovery', 'settings', 'player'].forEach((name) => {
-        fetch('/components/' + name)
-          .then((r) => (r.ok ? r.text() : ''))
-          .then((t) => t && this.styleFor(t))
-          .catch(() => {});
-      });
+      if (animate) {
+        window.scrollTo(0, 0);
+        if (!document.documentElement.classList.contains('reduce-motion') && host.animate) {
+          const offset = name === 'player' ? 16 : 6;
+          routeAnimation = host.animate(
+            [{ opacity: 0.65, transform: 'translateY(' + offset + 'px)' }, { opacity: 1, transform: 'none' }],
+            { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+          );
+        }
+      }
     },
 
     async go(path, opts = {}) {
       const next = resolveRoute(path) || resolveRoute('/library/tracks');
       if (!opts.replace && next.path !== location.pathname) history.pushState({}, '', next.path);
       else if (opts.replace && !opts.fromPop) history.replaceState({}, '', next.path);
-      const changed = next.fragment !== this.route.fragment;
+      const changed = next.fragment !== mountedFragment;
+      ++navigation;
       this.prevPath = this.route.path;
       this.route = next;
       this.closeMenu();
@@ -246,8 +254,7 @@ function initAlpineApp() {
         next.name === 'player' ? '0px' : (this.$refs.overlay ? this.$refs.overlay.offsetHeight : 0) + 'px'
       );
       if (changed) {
-        await this.loadFragment(next.fragment);
-        window.scrollTo(0, 0);
+        await this.loadFragment(next.fragment, { animate: true });
       }
     },
 
@@ -347,8 +354,9 @@ function initAlpineApp() {
       const exts = /\.(mp3|m4a|m4b|aac|flac|ogg|oga|opus|wav|webm|mp4)$/i;
       const jobs = [];
       for (const f of Array.from(fileList || [])) {
-        if (isZipFile(f)) {
+        if (/\.zip$/i.test(f.name) || ['application/zip', 'application/x-zip-compressed'].includes(f.type)) {
           try {
+            const { ZipReader, baseName, mimeFor } = await import('./zip.js');
             const zip = await ZipReader.open(f);
             for (const entry of zip.audioEntries()) {
               const name = baseName(entry.name);
@@ -374,6 +382,7 @@ function initAlpineApp() {
         this.snackbar('No audio files found');
         return;
       }
+      const { compressArtwork, probeDuration, readTags } = await import('./tagreader.js');
       const sid = 'import';
       let added = 0;
       for (let i = 0; i < jobs.length; i++) {
@@ -925,12 +934,25 @@ function initAlpineApp() {
       this.applyVolume();
     },
 
+    get outputVolume() {
+      const raw = Number(this.settings.outputReductionDb);
+      const reduction = Number.isFinite(raw) ? Math.max(-30, Math.min(0, raw)) : 0;
+      return this.volume * Math.pow(10, reduction / 20);
+    },
+
+    setOutputReduction(value) {
+      const db = Number(value);
+      if (!Number.isFinite(db)) return;
+      this.settings.outputReductionDb = Math.max(-30, Math.min(0, db));
+      this.applyVolume();
+    },
+
     applyVolume() {
       if (this.audioEl) {
-        this.audioEl.volume = this.volume;
+        this.audioEl.volume = this.outputVolume;
         this.audioEl.muted = this.muted;
       }
-      YTBridge.setVolume(Math.round(this.volume * 100));
+      YTBridge.setVolume(Math.round(this.outputVolume * 100));
       YTBridge.setMuted(this.muted);
       this.settings.volume = this.volume;
     },
@@ -977,7 +999,7 @@ function initAlpineApp() {
         await YTBridge.load(track.videoId);
         if (!this.ytMode || this.currentTrack !== track) return;
         YTBridge.loadVideo(track.videoId);
-        YTBridge.setVolume(Math.round(this.volume * 100));
+        YTBridge.setVolume(Math.round(this.outputVolume * 100));
         YTBridge.setMuted(this.muted);
       } catch (e) {
         console.warn('YouTube playback failed:', e);
@@ -1031,7 +1053,7 @@ function initAlpineApp() {
       ytFallback.tried.add(track.videoId);
       if (ytFallback.altsFor !== track.id) {
         ytFallback.altsFor = track.id;
-        ytFallback.alts = await findYouTubeAlternatives(track, [...ytFallback.tried]);
+        ytFallback.alts = await findYouTubeAlternatives(track, [...ytFallback.tried], this.settings.discoveryRating);
         if (this.currentTrack !== track) return true; // the user moved on while searching
       }
       const next = (ytFallback.alts || []).find((a) => !ytFallback.tried.has(a.id) && !blockedVideos.has(a.id));
@@ -1557,7 +1579,8 @@ function initAlpineApp() {
             i.click();
           }
         },
-        { icon: 'compass', label: 'Discover music', run: () => this.go('/discovery') }
+        { icon: 'compass', label: 'Discover music', run: () => this.go('/discovery') },
+        { icon: 'settings', label: 'Settings', run: () => this.go('/settings') }
       ]);
     },
 
@@ -1592,6 +1615,11 @@ function initAlpineApp() {
 
     openDiscoveryMenu(e) {
       this.openMenu(e, [
+        {
+          icon: 'settings',
+          label: 'Settings',
+          run: () => this.go('/settings')
+        },
         {
           icon: 'cached',
           label: this.settings.discoverySource === 'youtube' ? 'Use Apple previews' : 'Use YouTube',
@@ -1687,6 +1715,7 @@ function initAlpineApp() {
     loading: false,
     error: '',
     results: [],
+    searchVersion: 0,
     title: 'Top Hits',
     source: 'youtube',
 
@@ -1701,20 +1730,24 @@ function initAlpineApp() {
     async search(term, initial = false) {
       term = (term || '').trim();
       if (!term) return;
+      const version = ++this.searchVersion;
+      this.results = [];
       this.loading = true;
       this.error = '';
       this.title = initial ? 'Top Hits' : 'Songs';
+      const mode = this.app().settings.discoveryRating;
       const wantYouTube = this.app().settings.discoverySource !== 'itunes';
       try {
         let rows = null;
         if (wantYouTube) {
           try {
-            rows = await youtubeSearch(term, 24);
+            rows = await youtubeSearch(term, 24, mode, this.app().settings.discoveryContent);
           } catch (e) {
             if (!e.status) throw e; /* every keyless source failed: fall back to previews */
           }
         }
-        if (rows) {
+        if (version !== this.searchVersion) return;
+        if (rows?.length) {
           this.source = 'youtube';
           this.results = rows.map((r) => {
             const m = cleanYouTubeMeta(r.title, r.channel);
@@ -1745,7 +1778,8 @@ function initAlpineApp() {
           });
         } else {
           // Chosen in Settings, or YouTube unavailable: 30-second Apple previews.
-          const data = await itunesSearch(term, 24);
+          const data = await itunesSearch(term, 24, mode, this.app().settings.discoveryContent);
+          if (version !== this.searchVersion) return;
           this.source = 'itunes';
           this.results = data
             .map((r) => ({
@@ -1761,11 +1795,12 @@ function initAlpineApp() {
             .filter((r) => r.previewUrl);
         }
       } catch (e) {
+        if (version !== this.searchVersion) return;
         console.error('Discovery search error:', e);
         this.results = [];
         this.error = 'Failed to fetch';
       } finally {
-        this.loading = false;
+        if (version === this.searchVersion) this.loading = false;
       }
     },
 

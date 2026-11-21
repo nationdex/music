@@ -26,8 +26,8 @@ Material 3.
 
 | Layer | Tool |
 | --- | --- |
-| 🧩 UI and logic | Alpine.js 3.14.9 with the Persist, Anchor, Focus and Intersect plugins |
-| 🎨 Styling | [UnoCSS](https://unocss.dev) runtime with `preset-wind4` (Tailwind v4 class names), generated in the browser. No build step, no Node |
+| 🧩 UI and logic | HTMX for route fragments and Alpine.js 3.14.9 with the Persist, Anchor, Focus and Intersect plugins |
+| 🎨 Styling | Plain CSS. No build step, no Node |
 | 🌐 Serving | nginx, configuration only: static files, SSI partials, cached API proxies |
 | 💾 Storage | IndexedDB for audio, tags and cover art. localStorage for settings and playlists |
 | 📝 Lyrics | [Adi Lyrics](https://lyrics.adi.rest), with LRCLIB and LRC Mux as fallbacks |
@@ -46,13 +46,12 @@ site/                 everything nginx serves
   components/         page fragments fetched by the router
   partials/           SSI includes: icon sprite, select control
   assets/
-    app.css           Material 3 tokens and component CSS
-    uno.config.js     UnoCSS config: colors, type scale, breakpoints
+    css/              shared tokens, utilities, motion, and landing styles
   sw.js               service worker (offline shell)
   manifest.webmanifest  PWA manifest: icons, shortcuts, file handlers, screenshots
     js/               ES modules: app.js (Alpine component), tags, db, lyrics,
                       sources, palette, router, config, util, theme, pwa
-    vendor/           pinned Alpine, plugins and UnoCSS, checked in
+    vendor/           pinned HTMX, Alpine and plugins, checked in
   fonts/ images/      M PLUS Rounded 1c subsets, icons, logo, screenshots
 deploy/               nginx config, systemd unit, env file, install and prepare scripts
 tools/discord-rpc/    optional Discord presence bridge (runs on your computer, not on the server)
@@ -131,26 +130,13 @@ Target (the nginx proxies are GET-only).
 
 ## 🎨 Styling
 
-`site/assets/app.css` holds the Material 3 tokens as `light-dark()` pairs, Tailwind's preflight
-reset, and component CSS for buttons, sliders, switches and dialogs. Utility classes such as
-`flex`, `bg-surfaceContainer` and `text-title-md` live in `site/assets/utilities.css`, a snapshot
-of what the UnoCSS runtime generates for every class in the site. Pages load it as a plain
-stylesheet, so nothing is generated in the browser.
+Edit the stylesheets in `site/assets/css/` directly. `app.css` owns Material 3 tokens and
+component styles. `utilities.css` holds shared layout and type classes. `motion.css`
+holds entrance and feedback animations.
 
-After adding or changing utility classes, regenerate the snapshot (needs Chrome and python3):
-
-```bash
-sh tools/css-snapshot/snapshot.sh        # reads the running site, rewrites site/assets/utilities.css
-```
-
-To try classes live first, open any page with `?uno=runtime` (the runtime loads for that browser
-until `?uno=off`).
-
-- The Material 3 type scale (`text-body-md`, `text-title-lg`, ...) is a small preset in `uno.config.js`.
-- Tailwind's `max-w-(--var)` shorthand is not supported. Write `max-w-[var(--var)]`.
 - **Older Safari.** `light-dark()` needs Safari 17.5. Below that, `app.css` carries a generated
   fallback (`python3 tools/css-compat/fallback.py` regenerates it, `--check` verifies it), the
-  accent re-hue in `app.js` resolves the colors itself, and the snapshot adds `-webkit-` prefixes.
+  accent re-hue in `app.js` resolves the colors itself, and the utility stylesheet includes `-webkit-` prefixes.
   Inputs stay at 16px on touch screens so iOS does not zoom on focus.
 - Blobs: Safari can refuse to store a Blob in IndexedDB (private browsing, Lockdown Mode, older
   iOS). `db.js` retries with an ArrayBuffer, so importing keeps working.
@@ -193,7 +179,7 @@ Only these exact endpoints are proxied. Anything else under `/up/` returns 404.
 - **📥 Library.** `js/tags.js` reads ID3v2 (MP3), MP4 atoms (M4A/AAC), and Vorbis comments
   with pictures (FLAC). It has no dependencies. Duration comes from an `<audio>` element,
   and covers are shrunk to 512 px JPEG. Everything is stored in IndexedDB.
-- **🧭 Router.** `go(path)` pushes history, fetches `/components/<name>`, and lets Alpine
+- **🧭 Router.** `go(path)` pushes history, loads and caches `/components/<name>` with HTMX, then lets Alpine
   wire up the new markup. The player and its audio element stay alive across pages.
 - **🎨 Theme.** The tokens in `app.css` are the single source. A custom accent, or the
   current cover art, re-hues the same palette. Settings persist through Alpine's `$persist`.
@@ -215,8 +201,6 @@ the version before this work:
 
 What changed:
 
-- **No CSS generation in the browser.** `utilities.css` is a snapshot (see Styling), so the 217 KB UnoCSS
-  runtime no longer loads and nothing waits for it.
 - **Cache forever, update instantly.** Asset URLs carry `?v=<content hash>` (`deploy/prepare.sh`) and are
   served `immutable`. Pages, the worker and the manifest always revalidate.
 - **No request waterfall.** The player's ES modules are `modulepreload`ed, and the CSS reset is inlined
@@ -226,15 +210,12 @@ What changed:
   serves them without compressing per request, and Brotli works without the nginx brotli module.
 
 ```bash
-sh deploy/optimize.sh               # builds dist/; needs gzip, and bin/nstd or brotli for .br
+sh deploy/optimize.sh               # builds dist/; needs gzip, with optional brotli for .br
 systemctl --user restart adimusic   # serves dist/ while it matches site/
 ```
 
-`optimize.sh` uses [nationdex/nstd](https://github.com/nationdex/nstd) for Brotli when `bin/nstd` exists,
-and checks the size budgets with [nationdex/astroisle](https://github.com/nationdex/astroisle) when
-`bin/astroisle` exists. Every compressed file is decompressed and compared before it is kept. Measured here,
-nstd's Brotli is 5% smaller than `gzip -9`, and nstd's gzip is 7% *larger* than `gzip -9`, so `.gz` files
-come from the system gzip. dist/ is ignored by git and never served when it is out of date.
+Every compressed file is decompressed and compared before it is kept.
+`dist/` is ignored by Git and served only while it matches `site/`.
 
 **SEO.** Every page includes `partials/seo.html`, which sets the title, description, canonical URL, Open
 Graph and Twitter card from a few variables. Set `ADI_PUBLIC_URL` in `deploy/adimusic.env` to the real

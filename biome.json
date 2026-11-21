@@ -3,8 +3,7 @@
   "files": {
     "includes": [
       "site/assets/js/**",
-      "site/assets/app.css",
-      "site/assets/uno.config.js",
+      "site/assets/css/**",
       "site/sw.js",
       "site/manifest.webmanifest",
       ".claude/settings.json",

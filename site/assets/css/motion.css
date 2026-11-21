@@ -1,0 +1,30 @@
+@keyframes adi-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.625rem);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero > * {
+    animation: adi-enter 420ms var(--ease-standard) backwards;
+  }
+
+  .hero > :nth-child(2) {
+    animation-delay: 65ms;
+  }
+}
+
+[role="status"].pointer-events-auto {
+  animation: adi-enter 180ms var(--ease-standard) backwards;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .m3-button-base:not(:disabled):hover {
+    translate: 0 -1px;
+  }
+
+  .m3-button-base:not(:disabled):active {
+    translate: 0 0;
+  }
+}

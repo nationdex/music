@@ -99,15 +99,40 @@
       </div>
     </section>
 
+    <section class="card mx-auto mt-6 w-full p-4" style="max-width: 56.25rem">
+      <h2 class="text-title-lg">Listening comfort</h2>
+      <p class="text-body-sm text-onSurfaceVariant">Reduce playback level across local files and Discovery. Device volume still affects loudness. This control does not measure sound pressure at your ears.</p>
+      <label class="mt-4 flex flex-col gap-2">
+        <span>Output reduction <output x-text="settings.outputReductionDb + ' dB'"></output></span>
+        <input type="range" min="-30" max="0" step="1" :value="settings.outputReductionDb" @input="setOutputReduction($event.target.value)" aria-label="Output reduction in decibels" />
+      </label>
+      <button type="button" class="m3-button-base tonal-button mt-4 h-10 px-4" @click="openDialog('equalizer')"><span class="button-content">Open equalizer</span></button>
+      <p class="mt-4 text-body-sm text-onSurfaceVariant">Try Gentle treble to reduce high frequencies in music. Your headphone app or device settings control active noise cancellation for sounds around you.</p>
+    </section>
+
     <!-- Discovery -->
     <section class="card mx-auto mt-6 w-full text-body-lg" style="max-width: 56.25rem">
       <div class="px-4 pt-4 text-title-sm text-onSurfaceVariant">Discovery</div>
+      <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
+        <div class="min-w-0">
+          <div>Discovery content</div>
+          <div class="text-body-sm text-onSurfaceVariant">Music only uses artist channels on YouTube. All content allows general videos. Apple remains limited to song previews. Age filtering applies to both modes.</div>
+        </div>
+        <div x-data="m3Select({ get: () => settings.discoveryContent, set: (v) => { settings.discoveryContent = v; persistSettings(); }, options: [['music','Music only'],['all','All content']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
+      </div>
       <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
         <div class="min-w-0">
           <div>Discovery source</div>
           <div class="text-body-sm text-onSurfaceVariant">YouTube and Audius play full tracks. Apple plays 30-second previews.</div>
         </div>
         <div x-data="m3Select({ get: () => settings.discoverySource, set: (v) => { settings.discoverySource = v; persistSettings(); }, options: [['youtube','YouTube'],['itunes','Apple previews']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
+      </div>
+      <div class="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
+        <div class="min-w-0">
+          <div>Discovery content filter</div>
+          <div class="text-body-sm text-onSurfaceVariant">Clean only requires a provider rating and skips YouTube. This setting applies to Discovery searches.</div>
+        </div>
+        <div x-data="m3Select({ get: () => settings.discoveryRating, set: (v) => { settings.discoveryRating = v; persistSettings(); }, options: [['standard','Hide flagged content'],['clean','Clean only'],['all','Include explicit music']] })" class="relative"><!--# include virtual="/partials/select.html" --></div>
       </div>
     </section>
 

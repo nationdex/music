@@ -6,7 +6,7 @@ Vendored in `site/assets/vendor/` at pinned versions. No package manager is used
 | --- | --- | --- | --- |
 | Alpine.js | 3.14.9 | MIT | https://github.com/alpinejs/alpine |
 | Alpine plugins: Persist, Anchor, Focus, Intersect | 3.14.9 | MIT | https://github.com/alpinejs/alpine (`packages/*`) |
-| UnoCSS runtime (`core.global.js`) and `preset-wind4` | 66.10.5 | MIT | https://github.com/unocss/unocss |
+| HTMX | 2.0.10 | 0BSD | https://github.com/bigskysoftware/htmx |
 | Tailwind CSS v4 preflight (reset, inlined in `app.css`) | 4.x | MIT | https://github.com/tailwindlabs/tailwindcss |
 
 Fonts in `site/fonts/` are subsets of M PLUS Rounded 1c (SIL Open Font License 1.1).

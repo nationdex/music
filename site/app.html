@@ -8,18 +8,18 @@
     <!--# include virtual="/partials/seo.html" -->
     <!--# include virtual="/partials/head.html" -->
     <!-- The entry imports these; preloading them lets the browser fetch the whole graph at once instead of one level at a time. -->
-    <link rel="modulepreload" href="/assets/js/config.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/db.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/equalizer.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/lyrics.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/palette.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/presence.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/pwa.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/router.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/sources.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/tagreader.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/util.js?v=<!--# echo var="asset_v" -->" />
-    <link rel="modulepreload" href="/assets/js/zip.js?v=<!--# echo var="asset_v" -->" />
+    <link rel="modulepreload" href="/assets/js/config.js" />
+    <link rel="modulepreload" href="/assets/js/db.js" />
+    <link rel="modulepreload" href="/assets/js/equalizer.js" />
+    <link rel="modulepreload" href="/assets/js/lyrics.js" />
+    <link rel="modulepreload" href="/assets/js/palette.js" />
+    <link rel="modulepreload" href="/assets/js/presence.js" />
+    <link rel="modulepreload" href="/assets/js/pwa.js" />
+    <link rel="modulepreload" href="/assets/js/router.js" />
+    <link rel="modulepreload" href="/assets/js/sources.js" />
+    <link rel="modulepreload" href="/assets/js/util.js" />
+    <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"timeout":10000}' />
+    <script defer src="/assets/vendor/htmx-2.0.10.min.js"></script>
     <script type="module" src="/assets/js/app.js?v=<!--# echo var="asset_v" -->"></script>
     <script defer src="/assets/vendor/alpine-persist.min.js?v=<!--# echo var="asset_v" -->"></script>
     <script defer src="/assets/vendor/alpine-anchor.min.js?v=<!--# echo var="asset_v" -->"></script>
@@ -27,15 +27,15 @@
     <script defer src="/assets/vendor/alpine.min.js?v=<!--# echo var="asset_v" -->"></script>
   </head>
 
-  <body x-data="playerApp()" x-init="boot()" @keydown.window="onKey($event)" @dragover.window.prevent="dragging = true" @dragleave.window="dragging = false" @drop.window.prevent="onDrop($event)">
+  <body hx-sync="this:queue all" x-data="playerApp()" x-init="boot()" @keydown.window="onKey($event)" @dragover.window.prevent="dragging = true" @dragleave.window="dragging = false" @drop.window.prevent="onDrop($event)">
     <!--# include virtual="/partials/icons.html" -->
 <div id="app" :class="{ 'is-player-route': route.name === 'player' }">
   <!-- Desktop navigation rail -->
   <nav aria-label="Primary" class="desktop-sidebar fixed top-20 left-4 z-1 hidden h-max w-16 flex-col items-center gap-2 sm:flex" x-show="route.name !== 'player' && route.name !== 'settings'">
     <template x-for="item in nav" :key="item.path">
-      <a :href="item.path" @click.prevent="go(item.path)" :aria-label="item.label" :aria-current="isNavActive(item) ? 'page' : null"
+      <a :href="item.path" @click.prevent="go(item.path)" :aria-label="item.label" :title="item.label" :aria-current="isNavActive(item) ? 'page' : null"
          class="m3-button-base flex h-14 w-20 shrink-0 items-center justify-center" style="min-width:5rem">
-        <div class="button-content">
+        <div class="button-content flex-col gap-0">
           <div class="flex items-center justify-center rounded-full p-2 transition-colors duration-200"
                :class="isNavActive(item) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'text-onSurface'">
             <svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="'#system-icon-' + item.icon"></use></svg>
@@ -134,10 +134,10 @@
     </div>
 
     <!-- Mobile navigation: second row of the overlay so the player sits above it -->
-    <nav aria-label="Primary" class="pointer-events-auto col-[1/6] grid h-16 bg-surfaceContainer sm:hidden" style="grid-template-columns: repeat(5, minmax(0, 1fr))" x-show="route.name !== 'settings'">
+    <nav aria-label="Primary" class="pointer-events-auto col-[1/6] grid h-16 bg-surfaceContainer sm:hidden" style="grid-template-columns: repeat(6, minmax(0, 1fr))" x-show="route.name !== 'settings'">
       <template x-for="item in nav.filter((i) => i.name !== 'home')" :key="item.path">
-        <a :href="item.path" @click.prevent="go(item.path)" :aria-label="item.label" :aria-current="isNavActive(item) ? 'page' : null" class="m3-button-base flex h-full items-center justify-center rounded-none">
-          <div class="button-content">
+        <a :href="item.path" @click.prevent="go(item.path)" :aria-label="item.label" :title="item.label" :aria-current="isNavActive(item) ? 'page' : null" class="m3-button-base flex h-full items-center justify-center rounded-none">
+          <div class="button-content flex-col gap-0">
             <div class="flex items-center justify-center rounded-full p-2 transition-colors duration-200" :class="isNavActive(item) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'text-onSurface'">
               <svg class="pointer-events-none shrink-0 fill-current size-6" role="presentation" viewBox="0 0 24 24"><use :href="'#system-icon-' + item.icon"></use></svg>
             </div>
